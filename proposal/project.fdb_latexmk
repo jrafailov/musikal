@@ -1,5 +1,5 @@
 # Fdb version 4
-["bibtex project"] 0 "project.aux" "project.bbl" "project" 1772681792.31161 0
+["bibtex project"] 0 "project.aux" "project.bbl" "project" 1773080412.63375 0
   "/usr/share/texlive/texmf-dist/bibtex/bst/natbib/plainnat.bst" 1233624470 26816 ffe5423d2019860bad9f54bc402fac15 ""
   "project.aux" 0 -1 0 "pdflatex"
   "references.bib" 0 -1 0 ""
@@ -7,9 +7,9 @@
   "project.bbl"
   "project.blg"
   (rewritten before read)
-["pdflatex"] 1772681792.00581 "/home/jr/NYU/ML/ML_project/proposal/project.tex" "project.pdf" "project" 1772681792.31171 0
+["pdflatex"] 1773080412.33299 "/home/jr/NYU/ML/musikal/proposal/project.tex" "project.pdf" "project" 1773080412.63387 0
   "/etc/texmf/web2c/texmf.cnf" 1770440825.69702 475 c0e671620eb5563b2130f56340a5fde8 ""
-  "/home/jr/NYU/ML/ML_project/proposal/project.tex" 1772681791.85477 891 4991e331f806e5fb44f2074a719f45c8 ""
+  "/home/jr/NYU/ML/musikal/proposal/project.tex" 1773080401.58781 1016 3eecbfc7b296939bb84205e04ec6217b ""
   "/usr/share/texlive/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm" 1246382020 1004 54797486969f23fa377b128694d548df ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex8.tfm" 1246382020 988 bdf658c3bfc2d96d3c8b02cfc1c94c20 ""
@@ -94,10 +94,10 @@
   "/usr/share/texmf/web2c/texmf.cnf" 1707919699 40399 f2c302f7d2af602abb742093540a5834 ""
   "/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map" 1770697514.41653 5349216 bf3a80e68d946c7acd95ff030fd9bb63 ""
   "/var/lib/texmf/web2c/pdftex/pdflatex.fmt" 1770440849 6830993 e73fd55d6b876f87d73f3d5100f6498d ""
-  "project.aux" 1772681792.23336 844 39a17521ea7bc8054341ff34e58e6480 "pdflatex"
+  "project.aux" 1773080412.54709 884 488ef6c479a15556f3b2e712bc38607d "pdflatex"
   "project.bbl" 0 -1 0 "bibtex project"
-  "project.out" 1772681792.23336 556 c78fceacd324b618673125a68d674365 "pdflatex"
-  "project.tex" 1772681791.85477 891 4991e331f806e5fb44f2074a719f45c8 ""
+  "project.out" 1773080412.54709 1282 9be525315b1ab456a4ee716db3d2f9ac "pdflatex"
+  "project.tex" 1773080401.58781 1016 3eecbfc7b296939bb84205e04ec6217b ""
   (generated)
   "project.aux"
   "project.log"

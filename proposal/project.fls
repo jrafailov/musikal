@@ -1,9 +1,9 @@
-PWD /home/jr/NYU/ML/ML_project/proposal
+PWD /home/jr/NYU/ML/musikal/proposal
 INPUT /etc/texmf/web2c/texmf.cnf
 INPUT /usr/share/texmf/web2c/texmf.cnf
 INPUT /usr/share/texlive/texmf-dist/web2c/texmf.cnf
 INPUT /var/lib/texmf/web2c/pdftex/pdflatex.fmt
-INPUT /home/jr/NYU/ML/ML_project/proposal/project.tex
+INPUT /home/jr/NYU/ML/musikal/proposal/project.tex
 OUTPUT project.log
 INPUT /usr/share/texlive/texmf-dist/tex/latex/base/article.cls
 INPUT /usr/share/texlive/texmf-dist/tex/latex/base/article.cls
