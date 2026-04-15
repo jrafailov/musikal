@@ -1,56 +1,97 @@
 \documentclass[10pt]{article}
-
-% Packages
-\usepackage[utf8]{inputenc}
-\usepackage[margin=1in]{geometry}
-\usepackage{amsmath, amssymb}
-\usepackage{graphicx}
-\usepackage{hyperref}
-\usepackage{natbib}
-
-% Title
-\title{%
-  \textbf{Project Title Here} \\[0.5em]
-  \large Machine Learning -- Spring 2026 \\
-  New York University
-}
-
-\author{
-  Lavinia Elser \\
-  \texttt{le2396@nyu.edu}
-  \and
-  Jasmine Hanjra \\
-  \texttt{jh10489@nyu.edu}
-  \and
-  Saurish Kapoor \\
-  \texttt{sk12995@nyu.edu}
-  \and
-  Johnathan Rafailov\\
-  \texttt{j.rafailov@nyu.edu} \\
-  \texttt{netID: rafaij01}
-}
-
-\date{\today}
+\usepackage{titlesec}
+\titleformat*{\section}{\large\bfseries}
+\input{packages}
+\input{math}
 
 \begin{document}
 
-\maketitle
 
-\begin{abstract}
-% Brief summary of the project
-\end{abstract}
+\title{\vspace{-2cm} Music recommendation system for DJs }
+\author{Lavinia Elser, Jasmine Hanjra, Saurish Kapoor, Johnathan Rafailov}
+\maketitle
 
 \section{What question are you solving?}
 
+
+In this project we will attempt a supervised learning problem which addresses music matching for DJs. Our model will act a recommendation platform for DJs to facilitate choice of the next tracks to play. The model takes as input the playing track and outputs 5 possible next tracks that could generally fit well with the currently playing song. This could be interpreted as a ranking problem, as we are interested in ranking the five output songs in order of compatibility. The system will extract features from the input song such as its tempo (beats per minute [BPM]), its amplitude, and its rhythmic structure, in order to find the five most accurate tracks that could result in a good mix. A mix is well performed if the BPMs are similar (as excessively changing the BPM will disturb listeners),  if their amplitude/energy match (coherency between the tracks), and if the rhythmic structures have similar patterns (to layer cleanly during the fade-in and fade-out of the two tracks).
+
 \section{Why it this question important to solve?}
+
+We hope that our application will make life easier for DJs and enable curation of suitable songs instead of the current framework of selecting from an entire library. DJs suffer from high performance pressure to choose songs that have good transitions and feed off the crowd's energy. The stakes in our project are notably higher and meaningfully different from that of a Spotify style "you may also enjoy" recommendation platform; there are few to no recommendation tools based on how actual DJs actual sequence tracks. Finally, music is a massive industry, and we hope our tool will enable aspiring DJs to both practice queueing and finding new songs with our platform, and ease the stress of queueing tracks. 
 
 \section{What has been done already?}
 
+ Current work focuses on network-based and playlist-based recommendations, using relationships between songs such as which songs appear together in playlists or how users interact with them \cite{aljanaki2017}. This works well for general recommendations, but it does not really consider how two songs would actually sound together in a mix. There is no analysis of tempo, amplitude, or rhythmic structure, which is a large limitation for DJs, because mixing is not just about similarity, but compatibility in terms of BPM, energy, and rhythmic structure.
+ 
+ Other work tries to automate the mixing process itself, including transitions and effects using deep learning \cite{arxiv2021}. However, this becomes more of a black-box system where the model decides everything and there is no human in the loop. In our case, we are not trying to replace the DJ, but assist them, so keeping the human in the loop is really important. There is also work that uses deep learning to create playlists by "listening" to music \cite{mer}, which is closer to what we are doing. However, it is still focused on playlist generation rather than live DJ mixing, and it does not explicitly prioritize the physical and musical features like BPM, amplitude, and rhythmic structure in the way DJs actually think.
+ 
+ So overall, existing work either relies on user behavior and playlists rather than actual audio physics, or it tries to fully automate DJing through black-box models that remove the human element. There is also very little open-source work that combines raw audio input with interpretable musical features while keeping the DJ in the loop. That is exactly where our approach is different. We take raw audio as input, extract meaningful features like BPM, amplitude, and rhythmic structure, and use those to recommend tracks that would actually mix well, while still leaving the final decision to the DJ.
+
 \section{How are you solving this? How is it different from others' solutions?}
+
+ We will train a neural network to predict DJ track compatibility from audio features, using real DJ transitions as our supervised training dataset. 
+
+\subsection*{Feature Extraction}
+
+For each track in our dataset, we will extract two types of features. First, we will pass the audio through Deej-AI's \cite{deejai} pretrained CNN, which maps mel spectrograms to 100-dimensional embedding vectors that encode high-level musical similarity learned from 1 million Spotify playlists. These embeddings capture properties like timbre, mood, and genre. Second, we will tap into  python package librosa to extract interpretable musical features: BPM (tempo), RMS energy (amplitude), spectral centroid and bandwidth (tonal brightness), and onset patterns (rhythmic structure). We will concatenate both into a single feature vector per track, giving the model access to both audio similarity and physical properties that DJs rely on in choosing compatible tracks.
+
+\subsection*{Training Data and Split Strategy}
+
+Our primary training data comes from the 1001Tracklists dataset \cite{1001tracklists}, which contains metadata from 1,557 real-world DJ mixes spanning 13,728 tracks and 20,765 transitions. Each transition pair represents a DJ's decision that track B should follow track A, providing us with supervision for what constitutes an actually good mix. Positive pairs will be real transition from DJ sets in this dataset and negative pairs will be randomly sampled, non-adjacent tracks. We will split the dataset 80/20 by mixing so that none appears in any training or test set. The 20\% split will serve as our validation set for computing retrieval and compatibility metrics. For extensibility, we plan to use an orthogonal catalog (such as FMA \cite{fma}) to evaluate the generalizability of our method on tracks it hasn't seen during training or validation, and across different genres.
+
+\subsection*{Model Architecture}
+
+We will train a multilayer pereceptron (MLP) that takes a pair of track feature vectors and outputs a compatibility score betwen them. The input to the architecture will be the concatenation of both tracks' feature vectors and the differences between them. We will train with binary cross-entropy loss with the explicit training signal detailed in the last step. Through this training step, the model will ideally learn real DJ behavior such as which audio features matter the most in mixing, rather than a set of handwritten rules.
+
+\subsection*{Validation}
+
+Beyond the held-out test set from 1001Tracklists, we use UnmixDB \cite{unmixdb} as a qualitative sanity check. UnmixDB contains 37 electronic dance tracks with detailed mixing ground truth including crossfade parameters, effects applied, and time-stretching variants. While too small for quantitative evaluation, it allows us to verify that transitions recommended by our model are technically feasible mixes in terms of beat alignment and gain staging.
+
+\subsection*{Inference}
+
+At inference time, given a currently playing track, the system extracts its feature vector, scores every track in the library using the trained MLP, and returns the top 5 candidates ranked by predicted compatibility. Each recommendation is presented with its BPM, key, energy level, and compatibility score so that the DJ can make an decision about which track to play next.
+
+Unlike prior work that relies on playlist co-occurrence without analyzing actual audio \cite{aljanaki2017}, or that fully automates mixing through black-box models without human input \cite{arxiv2021}, our pipeline learns compatibility directly from real DJ transitions on extracted audio features while keeping the DJ in the loop. The model is interpretable in the sense that each recommendation comes with explicit feature comparisons (BPM difference, energy match, rhythmic similarity), letting the DJ understand why a track was recommended rather than trusting a black box.
 
 \section{What experiments will you run?}
 
-\bibliographystyle{plainnat}
-\bibliography{references}
+We evaluate our system using three complementary approaches on the held-out 20\% test split from 1001Tracklists.
+
+\begin{enumerate}
+    \item \textbf{Retrieval metrics.} Given a query track from the test set, we check whether the system's top 5 recommendations include the actual next track that the DJ played. We report recall@5, precision@5, and mean reciprocal rank (MRR) to measure both coverage and ranking quality.
+
+    \item \textbf{DJ compatibility metrics.} For each recommended track, we compute the BPM difference, RMS energy difference, and rhythmic structure similarity (via onset pattern correlation and spectral flux) relative to the query track. We report the average of each across all test recommendations. These metrics verify that the model is recommending tracks that are physically compatible for mixing, not just semantically similar.
+
+    \item \textbf{Human evaluation.} We conduct a small user study with experienced DJs who listen to the query track alongside each recommendation and rate mix-ability on a 1-5 scale. This captures subjective musical judgment that automated metrics cannot.
+\end{enumerate}
+
+We expect recall@5 to be significantly above random chance, average BPM differences to be small (within the range a DJ can comfortably pitch-shift), and energy and rhythmic similarity to be high across recommendations. The human evaluation will serve as a final check that the model's notion of compatibility aligns with how DJs actually think about track selection.
+
+\begin{thebibliography}{9}
+
+\bibitem{aljanaki2017}
+Knees, P. \& Schedl, M. (2016). \textit{Music Similarity and Retrieval: An Introduction to Audio- and Web-based Strategies}. Springer. \url{https://doi.org/10.1007/978-3-662-49722-7}
+
+\bibitem{arxiv2021}
+Chen, B.-Y., Lerch, A., \& Gretton, A. (2021). Automatic DJ Transitions with Differentiable Audio Effects and Generative Adversarial Networks. \textit{arXiv preprint arXiv:2110.06525}. \url{https://arxiv.org/abs/2110.06525}
+
+\bibitem{mer}
+Schedl, M., Knees, P., McFee, B., Bogdanov, D., \& Kaminskas, M. (2015). Music Recommender Systems. In \textit{Recommender Systems Handbook} (pp. 453--492). Springer. \url{https://doi.org/10.1007/978-1-4899-7637-6_13}
+
+\bibitem{deejai}
+Teticio. (n.d.). \textit{Deej-AI: Create automatic playlists by using deep learning to listen to the music} [Source code]. GitHub. \url{https://github.com/teticio/Deej-AI}
+
+\bibitem{unmixdb}
+Schwarz, D. \& Fourer, D. (2015). UnmixDB: A Dataset for DJ-Mix Information Retrieval. \textit{Proceedings of the 16th International Society for Music Information Retrieval Conference (ISMIR)}. \url{https://doi.org/10.5281/zenodo.3346457}
+
+\bibitem{1001tracklists}
+Kim, T. H. \& Kronland-Martinet, R. (2020). Mir-aidj: Automatic DJ Mix Generation Based on Music Information Retrieval. \textit{Proceedings of the International Computer Music Conference (ICMC)}.
+
+\bibitem{fma}
+Defferrard, M., Benzi, K., Vandergheynst, P., \& Bresson, X. (2017). FMA: A Dataset for Music Analysis. \textit{Proceedings of the 18th International Society for Music Information Retrieval Conference (ISMIR)}. \url{https://github.com/mdeff/fma}
+
+\end{thebibliography}
 
 \end{document}
+
