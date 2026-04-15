@@ -1,0 +1,51 @@
+# Data files (too large for git)
+data/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+
+# Audio / model artifacts
+*.mp3
+*.wav
+*.flac
+*.ogg
+*.m4a
+*.pkl
+*.pickle
+*.h5
+*.pt
+*.pth
+*.ckpt
+*.npy
+*.npz
+
+# LaTeX build artifacts
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.synctex.gz
+*.out
+*.toc
+*.bbl
+*.blg
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.code-workspace
+
+# Claude
+CLAUDE.md
+
+# Node
+node_modules/
+package-lock.json
