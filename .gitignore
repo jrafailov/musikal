@@ -58,3 +58,5 @@ node_modules/
 package-lock.json
 /data/*
 !/data/tracklists/
+!/data/music/
+!/data/music/**
