@@ -1,7 +1,7 @@
 # Fdb version 4
-["pdflatex"] 1774490093.06824 "/home/jr/NYU/ML/musikal/proposal/project.tex" "project.pdf" "project" 1774490093.51756 0
+["pdflatex"] 1776984918.26266 "/home/jr/NYU/ML/musikal/proposal/project.tex" "project.pdf" "project" 1776984918.7295 0
   "/etc/texmf/web2c/texmf.cnf" 1770440825.69702 475 c0e671620eb5563b2130f56340a5fde8 ""
-  "/home/jr/NYU/ML/musikal/proposal/project.tex" 1774490092.65826 11252 71e97882f0c57578b0ccf0a83f56d8c3 ""
+  "/home/jr/NYU/ML/musikal/proposal/project.tex" 1776984917.75802 11306 51ebbac08c8a35cbf7c14d21305e636d ""
   "/usr/share/texlive/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/jknappen/ec/ectt1000.tfm" 1136768653 1536 06717a2b50de47d4087ac0e6cd759455 ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmbsy5.tfm" 1246382020 1120 1e8878807317373affa7f7bba4cf2f6a ""
@@ -205,9 +205,9 @@
   "/var/lib/texmf/web2c/pdftex/pdflatex.fmt" 1770440849 6830993 e73fd55d6b876f87d73f3d5100f6498d ""
   "math.tex" 1774476982.93511 4456 fd4dea050376a55a198dc0f03566e64d ""
   "packages.tex" 1774482397.96605 690 71b28eb259a51d15d1b57bb437f38d00 ""
-  "project.aux" 1774490093.47651 1178 936d43282b118c6b53b313a3ca7b7d99 "pdflatex"
-  "project.out" 1774490093.47651 1282 9be525315b1ab456a4ee716db3d2f9ac "pdflatex"
-  "project.tex" 1774490092.65826 11252 71e97882f0c57578b0ccf0a83f56d8c3 ""
+  "project.aux" 1776984918.68551 1178 936d43282b118c6b53b313a3ca7b7d99 "pdflatex"
+  "project.out" 1776984918.68551 1282 9be525315b1ab456a4ee716db3d2f9ac "pdflatex"
+  "project.tex" 1776984917.75802 11306 51ebbac08c8a35cbf7c14d21305e636d ""
   (generated)
   "project.aux"
   "project.log"
