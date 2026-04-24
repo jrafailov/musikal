@@ -1,5 +1,12 @@
 # Data files (too large for git)
-data/
+data/audio
+data/audio-log
+data/clean
+data/deej-ai
+data/fma_metadata
+data/fma_small
+data/mir_aidj-raw
+
 
 # Python
 __pycache__/
@@ -49,4 +56,5 @@ CLAUDE.md
 # Node
 node_modules/
 package-lock.json
-/data
+/data/*
+!/data/tracklists/

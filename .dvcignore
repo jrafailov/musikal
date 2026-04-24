@@ -9,3 +9,7 @@ data/fma_small.zip
 data/fma_metadata.zip
 data/fma_small.wget.log
 data/fma_metadata.wget.log
+
+# Tracklist CSVs live in git directly, so keep DVC's hands off
+# them to avoid dual tracking.
+data/tracklists/
