@@ -60,3 +60,7 @@ package-lock.json
 !/data/tracklists/
 !/data/music/
 !/data/music/**
+!/data/clean/
+
+# Nested git clones / external reference repos — not part of our tree
+third_party/
