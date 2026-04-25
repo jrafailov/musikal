@@ -17,3 +17,8 @@ data/tracklists/
 # Sample audio tracks used by the feature-extraction starter
 # script also live in git, not DVC.
 data/music/
+
+# Derived / cleaned metadata (track lists, positive pairs, audio
+# feature tables) is small and lives in git so teammates get it
+# straight from the repo without a DVC pull.
+data/clean/
