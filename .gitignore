@@ -62,5 +62,8 @@ package-lock.json
 !/data/music/**
 !/data/clean/
 
+# Lavi human-eval answer key — kept local so she can't see labels in git
+data/clean/baseline/lavi_pair_eval_answer_key.csv
+
 # Nested git clones / external reference repos — not part of our tree
 third_party/
