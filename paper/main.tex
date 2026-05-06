@@ -118,36 +118,21 @@ For our project, we focused on mixability using audio features. We extracted fea
 
 \subsection{Dataset}
 
-\textbf{Questions to answer?}
+We use the open \emph{mir-aidj djmix-dataset} \citep{mir_aidj_djmix} as our source of real DJ transitions. The dataset aggregates 5{,}040  DJ mixes from MixesDB which are annotated by the community, covering 63{,}038 unique tracks and 64{,}753 adjacent track transitions. Each mix entry has an ordered tracklist with track titles, positions in the mix, and a YouTube source URL for the mix audio. The dataset itself contains only the metadata; the audio for individual tracks have to be scraped separately.
 
-\begin{itemize}
-    \item Where did we acquire the dataset(s) from?
-    \item What procedures / techniques were applied on the dataset to clean it?
+\paragraph{Scraping audio.} We first filtered the track set to those appearing in at least three distinct mixes so that the model is trained on tracks that DJs actually reach for repeatedly rather than one-off picks from a single mix. This collapses the long tail and brings the candidate pool down to roughly 4{,}100 tracks. For each candidate we then queried YouTube for the corresponding song and downloaded the audio with \texttt{yt-dlp} \citep{ytdlp}. Around 10--20\% of candidates failed to download for various reasons (404 error, age restrictions, etc.). After this stage we had 3{,}827 tracks with usable audio.
 
-The raw dataset came as a JSON file, which was not directly usable for training. The JSON was nested, so each mix had fields like the mix id, tracklist, track titles, artists, timestamps, and the order of transitions. The first thing we did was parse through this structure and pull out only the fields that were actually relevant to our task, then flatten everything into a table with one row per track per mix.
+\paragraph{Cleaning the tracklist metadata.} A non-trivial fraction of raw tracklist rows had titles that could not be parsed cleanly into an artist::title pair (formatting was inconsistent across mixes), and some unique track strings were near-duplicates of others (whitespace, ``feat.'' versus ``ft.'', artist order). We deduped on a normalized version of the title and dropped rows whose track identifier could not be matched back to a row in the audio features table. When an unparseable or unfeatured track sat between two clean tracks in a mix---tracklist [A, B, *C*, D]---we kept the surrounding pairs (A,~B) and dropped (B,~C) and (C,~D) rather than adding a bridged pair (B,~D); a positive is defined to be a real observed transition. We also dropped pairs where the same track appeared on both sides (a small number of self loops introduced by tracklist annotation errors).
 
-After that, we cleaned it up by removing any rows where important information was missing. If a track was missing an identifier or could not be matched to its audio features later, we removed it. We also checked for duplicate tracks, since the same song sometimes appeared with slightly different titles, artist names, or formatting in the raw data.
+\paragraph{Considerations during selection.} Two tradeoffs drove the choices above. We preferred the djmix-dataset over scraping 1001Tracklists or building our own corpus because it is openly redistributable as metadata and the audio acquisition layer is intentionally separated from the tracklist information. Second, every cleaning step was set up so that it could only \emph{remove} rows: we drop tracks rather than impute features, drop pairs rather than bridge missing tracks, and drop unmatched titles rather than match them. The resulting positives are conservative but each one corresponds to a transition a human DJ had actually played.
 
-Once the file was cleaned and converted into a csv file, it was so much easier to work with.
-
-    \item What considerations were contemplated during the process of dataset selection and cleaning?
-\end{itemize}
-
-\textbf{Important Statistics to Add}
-
-\begin{itemize}
-    \item Number of unique tracks with extracted features
-    \item Number of positive pairs = (3,721)
-    \item Number of total pairs after negative sampling (7,442)
-    \item Train/test split ratio (80/20 by mix id)
-    \item Train pair count (5,940) and test pair count (1,502)
-\end{itemize}
+\paragraph{Final dataset.} Of the 64{,}753 raw transitions, 3{,}724 had both endpoint tracks present in the audio features table; after dropping self-loops we retained 3{,}721 positive pairs spanning 1{,}605 distinct mixes. We sample negative pairs at a 1:1 ratio, giving a total of 7{,}442 labelled pairs. We split at the mix level, holding out 20\% of contributing mixes for testing so that no mix appeared in both partitions. The resulting partition contained 5{,}940 training pairs and 1{,}502 test pairs.
 
 
 
 \subsection{Feature Extraction}
 
-After consolidating the songs and organizing our dataset, the next step was to extract acoustic features from each song to form a tabular dataset that could be used to predict our target. We used the Librosa Python package \citep{mcfee2015librosa} to extract all available features the package offers, while excluding redundant feature families to avoid correlation. The features captured three musical dimensions central to DJ practice: tempo (beats per minute, BPM), energy (RMS amplitude), and rhythmic structure (tempogram, tempogram ratio, fourier tempogram). Additional features included spectral characteristics (centroid, bandwidth, contrast, flatness), harmonic content (chroma and tonnetz), and timbral content (MFCCs).
+We extracted acoustic features from every .mp3 file with the librosa Python package \citep{mcfee2015librosa}, summarizing each per-frame time series into per-track means and standard deviations. The raw extraction produced a 1{,}602-column feature table; we then restricted the modelling input to an allow-list of ten feature families so that highly correlated raw representations such as \texttt{melspectrogram} and \texttt{chroma\_stft} did not dominate. The kept families cover three musical dimensions central to DJ practice: tempo (\texttt{tempo}, \texttt{tempogram\_ratio}), energy and rhythmic texture (\texttt{rms}, \texttt{zero\_crossing\_rate}), and spectral / harmonic / timbral content (\texttt{spectral\_centroid}, \texttt{spectral\_bandwidth}, \texttt{spectral\_contrast}, \texttt{spectral\_flatness}, \texttt{chroma\_cens}, \texttt{tonnetz}, \texttt{mfcc}). After filtering, each track is represented by a 113-dimensional feature vector.
 
 DJs mix at three rhythmically compatible speeds: same tempo (1:1), double-tempo (2:1), and half-tempo (1:2). To capture this directly, we engineered a custom feature called \emph{harmonic BPM distance}, defined as:
 
@@ -156,7 +141,7 @@ DJs mix at three rhythmically compatible speeds: same tempo (1:1), double-tempo 
     H_{BPM} = \min(|T_A - T_B|, |T_A - 2T_B|, |T_A - T_B/2|)
 \end{equation}
 
-Given a song $A$ with tempo $T_A$ and a song $B$ with tempo $T_B$, minimizing each term of \cref{harmonicBPM} leads to a perfect superposition of the two tracks under any of the three DJ-relevant ratios. The full feature extraction code is available at \url{[your-github-repo-here]}.
+Given a song $A$ with tempo $T_A$ and a song $B$ with tempo $T_B$, minimizing each term of \cref{harmonicBPM} leads to a perfect superposition of the two tracks under any of the three DJ-relevant ratios. The full feature extraction code is available at \url{https://github.com/jrafailov/musikal}.
 
 \subsection{Pair Construction and Negative Sampling}
 
