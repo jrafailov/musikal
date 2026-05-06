@@ -8,6 +8,12 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.metrics import confusion_matrix, classification_report
 
+
+def harmonic_bpm_distance(t_a, t_b):
+    if pd.isna(t_a) or pd.isna(t_b):
+        return 0.0
+    return min(abs(t_a - t_b), abs(t_a - 2 * t_b), abs(t_a - t_b / 2))
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 TRACKLISTS_DIR = REPO_ROOT / "data" / "tracklists"
 CLEAN_DIR = REPO_ROOT / "data" / "clean"
@@ -234,7 +240,13 @@ a_features = features_indexed.loc[all_pairs.track_1.values].values
 b_features = features_indexed.loc[all_pairs.track_2.values].values
 diff_features = np.abs(a_features - b_features)
 
-X = np.concatenate([a_features, b_features, diff_features], axis=1)
+tempo_idx = feature_cols.index("tempo")
+harmonic_bpm = np.array([
+    harmonic_bpm_distance(a, b)
+    for a, b in zip(a_features[:, tempo_idx], b_features[:, tempo_idx])
+]).reshape(-1, 1)
+
+X = np.concatenate([a_features, b_features, diff_features, harmonic_bpm], axis=1)
 y = all_pairs.label.values
 
 print(f"\nFeature matrix shape: {X.shape}")
@@ -292,7 +304,8 @@ print(classification_report(
 feature_names = (
     [f"A_{c}" for c in feature_cols] +
     [f"B_{c}" for c in feature_cols] +
-    [f"|diff|_{c}" for c in feature_cols]
+    [f"|diff|_{c}" for c in feature_cols] +
+    ["harmonic_bpm_distance"]
 )
 
 importance_df = pd.DataFrame({

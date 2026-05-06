@@ -1,11 +1,6 @@
-# Data files (too large for git)
-data/audio
-data/audio-log
-data/clean
-data/deej-ai
-data/fma_metadata
-data/fma_small
-data/mir_aidj-raw
+# All data is ignored. Previously committed files stay tracked;
+# use `git add -f` to intentionally track new ones.
+/data/*
 
 
 # Python
@@ -58,14 +53,6 @@ CLAUDE.md
 # Node
 node_modules/
 package-lock.json
-/data/*
-!/data/tracklists/
-!/data/music/
-!/data/music/**
-!/data/clean/
-
-# Lavi human-eval answer key — kept local so she can't see labels in git
-data/clean/baseline/lavi_pair_eval_answer_key.csv
 
 # Nested git clones / external reference repos — not part of our tree
 third_party/

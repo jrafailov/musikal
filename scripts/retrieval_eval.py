@@ -118,6 +118,13 @@ all_track_ids_arr = features.index.values
 all_features_matrix = features.values
 n_tracks = len(all_track_ids_arr)
 track_id_to_idx = {tid: i for i, tid in enumerate(all_track_ids_arr)}
+tempo_idx = feature_cols.index("tempo")
+
+
+def harmonic_bpm_distance(t_a, t_b):
+    if pd.isna(t_a) or pd.isna(t_b):
+        return 0.0
+    return min(abs(t_a - t_b), abs(t_a - 2 * t_b), abs(t_a - t_b / 2))
 
 ranks = []
 hits_at_1, hits_at_5, hits_at_10 = [], [], []
@@ -137,7 +144,14 @@ for i, row in test_positives.iterrows():
     q_vec = all_features_matrix[q_idx]
     diff_vecs = np.abs(q_vec[None, :] - all_features_matrix)
     q_repeated = np.broadcast_to(q_vec, all_features_matrix.shape)
-    pair_matrix = np.concatenate([q_repeated, all_features_matrix, diff_vecs], axis=1)
+    q_tempo = q_vec[tempo_idx]
+    harmonic_col = np.array([
+        harmonic_bpm_distance(q_tempo, b_tempo)
+        for b_tempo in all_features_matrix[:, tempo_idx]
+    ]).reshape(-1, 1)
+    pair_matrix = np.concatenate(
+        [q_repeated, all_features_matrix, diff_vecs, harmonic_col], axis=1
+    )
 
     scores = model.predict_proba(pair_matrix)[:, 1]
     scores[q_idx] = -np.inf  # exclude the query itself
