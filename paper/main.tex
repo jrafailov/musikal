@@ -1,0 +1,313 @@
+\documentclass{article}
+\usepackage{float}
+\usepackage{soul}
+\usepackage{color} % Optional: to change highlight color
+\sethlcolor{yellow} % Sets highlight color
+
+
+
+% if you need to pass options to natbib, use, e.g.:
+%     \PassOptionsToPackage{numbers, compress}{natbib}
+% before loading neurips_2026
+
+% The authors should use one of these tracks.
+% Before accepting by the NeurIPS conference, select one of the options below.
+% 0. "default" for submission
+% \usepackage{neurips_2026}
+% the "default" option is equal to the "main" option, which is used for the Main Track with double-blind reviewing.
+% 1. "main" option is used for the Main Track
+%  \usepackage[main]{neurips_2026}
+% 2. "position" option is used for the Position Paper Track
+%  \usepackage[position]{neurips_2026}
+% 3. "eandd" option is used for the Evaluations & Datasets Track
+ % \usepackage[eandd]{neurips_2026}
+ % if you want to opt-in for a de-anomymized submission (not recommended, but OK):
+ % \usepackage[eandd, nonanonymous]{neurips_2026}
+% 4. "creativeai" option is used for the Creative AI Track
+%  \usepackage[creativeai]{neurips_2026}
+% 5. "sglblindworkshop" option is used for the Workshop with single-blind reviewing
+ % \usepackage[sglblindworkshop]{neurips_2026}
+% 6. "dblblindworkshop" option is used for the Workshop with double-blind reviewing
+%  \usepackage[dblblindworkshop]{neurips_2026}
+
+% After being accepted, the authors should add "final" behind the track to compile a camera-ready version.
+% 1. Main Track
+ % \usepackage[main, final]{neurips_2026}
+% 2. Position Paper Track
+%  \usepackage[position, final]{neurips_2026}
+% 3. Evaluations & Datasets Track
+ % \usepackage[eandd, final]{neurips_2026}
+% 4. Creative AI Track
+%  \usepackage[creativeai, final]{neurips_2026}
+% 5. Workshop with single-blind reviewing
+%  \usepackage[sglblindworkshop, final]{neurips_2026}
+% 6. Workshop with double-blind reviewing
+%  \usepackage[dblblindworkshop, final]{neurips_2026}
+% Note. For the workshop paper template, both \title{} and \workshoptitle{} are required, with the former indicating the paper title shown in the title and the latter indicating the workshop title displayed in the footnote.
+% For workshops (5., 6.), the authors should add the name of the workshop, "\workshoptitle" command is used to set the workshop title.
+% \workshoptitle{WORKSHOP TITLE}
+
+% "preprint" option is used for arXiv or other preprint submissions
+ \usepackage[preprint]{neurips_2026}
+
+% to avoid loading the natbib package, add option nonatbib:
+%    \usepackage[nonatbib]{neurips_2026}
+
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{hyperref}       % hyperlinks
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+\usepackage{xcolor}         % colors
+\usepackage{graphicx}
+\usepackage{cleveref}
+
+% Note. For the workshop paper template, both \title{} and \workshoptitle{} are required, with the former indicating the paper title shown in the title and the latter indicating the workshop title displayed in the footnote. 
+\title{Predicting the Next Best Track in a DJ Set}
+
+
+\author{%
+  \textbf{Lavinia Elser}$^{1}$ \quad \textbf{Saurish Kapoor}$^{1}$ \quad  \\ \textbf{Johnathan Rafailov}$^{1}$ \quad \textbf{Jasmine Hanjra}$^{1}$ \\
+  $^{1}$ Courant Institute of Mathematical Sciences \\
+  New York University\\
+  \texttt{\{le2396,sk12995,rafaij01,jh10489\}@nyu.edu} \\
+}
+
+\begin{document}
+
+
+\maketitle
+
+\begin{abstract}
+DJs spend countless hours combing through their music libraries to find songs that mix well together, taking time away from the actual craft of executing seamless transitions. We address this problem by training a recommendation system that takes a song's audio features as input and recommends the top 5 most mixable tracks. Unlike existing music recommenders that rely on user taste, genre, or artist metadata, we trained our models exclusively on the acoustic properties of audio. We framed the task as binary pair classification, with positive pairs drawn from real DJ transitions and negative pairs sampled from non-transitions. We compared six models including Random Forest, Gradient Boosting, LightGBM, PCA with Random Forest, and a Siamese contrastive network. LightGBM achieved the highest test accuracy at $78.6\%$ under random negative sampling, with harmonic BPM distance and tempo emerging as the most predictive features. A survey of 35 participants ($20\%$ professional DJs) reported $67.84\%$ overall satisfaction with the recommended tracks.
+\end{abstract}
+
+
+\section{Introduction}
+
+In this project we carried out a supervised learning problem which addresses music matching for DJs. DJs spend a lot of time looking through their music library before picking the next song, especially if the library is disorganized. While, they could use their time perfecting the next transition. Since the pressure is high, we want to facilitate DJs in choosing their next song, in order for them to have more time to focus on the actual mix.
+
+The model created acts a recommendation platform for DJs to facilitate them in choosing the next tracks to play based on some physical properties of the song derived from audio itself. Given a library of $N$ tracks and a query song s the DJ is actively playing, the model ranks the remaining $N - 1$ tracks by how mixable each one is with the query s, and return the top five by rank. 
+
+The system will extract features from the input song such as its tempo (beats per minute [BPM]), energy, and its rhythmic structure, in order to establish the ranking. Generally, a mix is well performed if the BPMs are similar (as excessively changing the BPM will disturb listeners), if their amplitude/energy match
+(coherency between the tracks), and if the rhythmic structures have similar patterns (to layer cleanly during the fade-in and fade-out of the two tracks).
+
+The model created is different from previous music recommendation system as it does not base the choice of the song on the genre, artist nor user behavior, but rather uses interesting physical insights of the song to recommend others from a DJ prospective. The model was trained on real DJ mixes based on a pair classifier trained on observed adjacent track transitions. We defined positive and negative pairs respectively as two songs that could be mixable or not. Multiple methods were tested in order to find the most accurate and unbiased model. 
+
+A survey was sent out for human evaluation, and a retrieval of next tracks was done to establish the accuracy of our system. Findings indicate that gradient boosting was the best method to train the model with an accuracy of $77 \%$. The most important feature that qualifies a positive pair was found to be tempo, which was expected as that is the first characteristic DJs look at when choosing songs. 
+
+Results from the survey show overall $67.84 \%$ satisfaction for the recommended tracks and coherent ranks, however with some room for improvement in the House genre. The track retrieval shows much better results fromthe applying gradient boosting than compared to the random baseline.
+
+\section{Related Work}
+When we started this project, we looked at what already existed for music recommendation and realized most of it was solving a slightly different problem than ours. Systems like the one studied in \citep{aljanaki2017benchmark} are built around emotional tags and listener behavior, they are trying to predict what a person might enjoy based on their profile history. That makes sense for a streaming platform, but a DJ needs more than that. The next song has to actually transition well into whatever is currently playing. This means that the tempo, energy, rhythm and overall song should fit well enough for the transition to feel natural.
+
+There is also work on automatic DJ systems \citep{arxiv2021autodj} that deals with transitions and beat matching, which is closer to what we are doing. But those systems just do everything on their own. That was not the point of our project. We were not trying to replace the DJ; we just wanted to make it easier to find the next song. The DJ still needs to be the one deciding, because a lot of DJing depends on the crowd and the moment, not just whether two songs technically work together.
+
+Deej-AI \citep{teticio_deejai} was the closest thing to our project that we found. It listens to the audio instead of just looking at metadata, which is what we wanted to do too. But it was trained on Spotify playlists, so it is really optimized for what sounds good to a listener, not what would work in a DJ transition. Two songs can sound similar and still be a bad mix if the BPMs do not line up or the energy shift feels off.
+
+For our project, we focused on mixability using audio features. We extracted features such as tempo, chroma, tempogram, MFCCs, RMS energy, and other rhythmic and sound texture features using librosa \citep{mcfee2015librosa}. We also used harmonic BPM distance because DJs do not only mix songs with the exact same BPM. Sometimes songs can still work together at half-time or double-time relationships. Our project is not a music recommender and not an automatic DJ system either. It uses machine learning to help with track selection, while the DJ still makes the final call.
+
+
+
+\section{Method}
+
+\subsection{Dataset}
+
+\textbf{Questions to answer?}
+
+\begin{itemize}
+    \item Where did we acquire the dataset(s) from?
+    \item What procedures / techniques were applied on the dataset to clean it?
+
+The raw dataset came as a JSON file, which was not directly usable for training. The JSON was nested, so each mix had fields like the mix id, tracklist, track titles, artists, timestamps, and the order of transitions. The first thing we did was parse through this structure and pull out only the fields that were actually relevant to our task, then flatten everything into a table with one row per track per mix.
+
+After that, we cleaned it up by removing any rows where important information was missing. If a track was missing an identifier or could not be matched to its audio features later, we removed it. We also checked for duplicate tracks, since the same song sometimes appeared with slightly different titles, artist names, or formatting in the raw data.
+
+Once the file was cleaned and converted into a csv file, it was so much easier to work with.
+
+    \item What considerations were contemplated during the process of dataset selection and cleaning?
+\end{itemize}
+
+\textbf{Important Statistics to Add}
+
+\begin{itemize}
+    \item Number of unique tracks with extracted features
+    \item Number of positive pairs = (3,721)
+    \item Number of total pairs after negative sampling (7,442)
+    \item Train/test split ratio (80/20 by mix id)
+    \item Train pair count (5,940) and test pair count (1,502)
+\end{itemize}
+
+
+
+\subsection{Feature Extraction}
+
+After consolidating the songs and organizing our dataset, the next step was to extract acoustic features from each song to form a tabular dataset that could be used to predict our target. We used the Librosa Python package \citep{mcfee2015librosa} to extract all available features the package offers, while excluding redundant feature families to avoid correlation. The features captured three musical dimensions central to DJ practice: tempo (beats per minute, BPM), energy (RMS amplitude), and rhythmic structure (tempogram, tempogram ratio, fourier tempogram). Additional features included spectral characteristics (centroid, bandwidth, contrast, flatness), harmonic content (chroma and tonnetz), and timbral content (MFCCs).
+
+DJs mix at three rhythmically compatible speeds: same tempo (1:1), double-tempo (2:1), and half-tempo (1:2). To capture this directly, we engineered a custom feature called \emph{harmonic BPM distance}, defined as:
+
+\begin{equation}
+\label{harmonicBPM}
+    H_{BPM} = \min(|T_A - T_B|, |T_A - 2T_B|, |T_A - T_B/2|)
+\end{equation}
+
+Given a song $A$ with tempo $T_A$ and a song $B$ with tempo $T_B$, minimizing each term of \cref{harmonicBPM} leads to a perfect superposition of the two tracks under any of the three DJ-relevant ratios. The full feature extraction code is available at \url{[your-github-repo-here]}.
+
+\subsection{Pair Construction and Negative Sampling}
+
+To finalize the construction of our dataset and make it training-ready, the next step was to determine the target variable. Since we wanted to recommend songs with high predicted mixability, we framed this recommendation task as a binary pair classification problem. We represent each pair as a feature vector $[A, B, |A - B|, H_{BPM}(A, B)]$, where $A$ and $B$ are the per-track librosa features. The absolute difference $|A-B|$ encodes how the two tracks differ across each feature, while $H_{BPM}$ captures harmonic tempo compatibility between the two songs.
+
+Positive pairs are drawn directly from observed adjacent transitions in the DJ Mix Dataset: if two songs were played one after the other in the same mix, they are considered a positive pair.
+
+Negative pairs require a sampling strategy, since not all non-transitions are equally informative about whether two songs are incompatible. We evaluated two strategies:
+
+\begin{itemize}
+\item \textbf{Random negatives}: Two tracks sampled uniformly at random from the track pool, with the constraint that the pair is not a known positive transition in either direction.
+\item \textbf{Hard negatives}: For each positive anchor track, we sample a candidate within $\pm 5$ BPM that is not a known transition. This forces the model to learn distinctions beyond simple BPM matching.
+\end{itemize}
+
+To assess the compatibility of each negative sampling strategy with our engineered harmonic BPM distance feature, we computed the mean and median harmonic distance across positive and negative pairs under each strategy. The results are shown in Figures~\ref{fig:hbpm-random} and~\ref{fig:hbpm-hard}.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.7\linewidth]{figures/harmonic_bpm_random.png}
+\caption{Harmonic BPM distance statistics under random negative sampling. Positive pairs have a mean harmonic distance of 4.90 BPM (median 2.45) compared to 11.36 BPM (median 5.81) for random negatives, providing clear separation between the two classes.}
+\label{fig:hbpm-random}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.7\linewidth]{figures/harmonic_bpm_hard.png}
+\caption{Harmonic BPM distance statistics under hard negative sampling. The relationship inverts: hard negatives have a mean harmonic distance of 1.86 BPM (median 2.72), which is smaller than the 4.90 BPM mean of positive pairs. Because hard negatives are constrained within $\pm 5$ BPM of a positive anchor, they end up closer in tempo than the positive pairs themselves.}
+\label{fig:hbpm-hard}
+\end{figure}
+
+
+\bigskip
+\bigskip
+\bigskip
+\bigskip
+\bigskip
+\bigskip
+\bigskip
+\bigskip
+\bigskip
+
+Under random negative sampling, the harmonic BPM distance feature carries strong discriminative signal: positive pairs have substantially lower harmonic distance than negatives. Under hard negative sampling, this relationship inverts, with negatives showing a smaller mean harmonic distance than positives. This is a direct consequence of the hard sampling constraint, which by construction selects negatives that are BPM-similar to a positive anchor. Because harmonic BPM distance is a feature we engineered specifically to capture the tempo compatibility that DJs rely on when choosing tracks, we chose random negative sampling for our primary pipeline. Hard negatives remain valuable as a stricter evaluation strategy that removes the easy BPM cue, and we report results under both strategies in Section 4 to provide a complete picture of model performance.
+
+\subsection{Models}
+
+We trained six models on the binary pair classification task.
+
+\begin{itemize}
+\item \textbf{Random Forest (default)}: 100 trees, no maximum depth, default sklearn settings. This serves as our baseline. We chose Random Forest over logistic regression or other generalized linear models because we wanted to maintain a human in the loop and prioritize feature interpretability — Random Forest exposes per-feature importance, while linear models capture only linear relationships.
+
+\item \textbf{Random Forest (tuned)}: 500 trees, maximum depth 20, minimum 5 samples per split. We added regularization through capped tree depth to prevent overfitting, since the default model showed perfect train accuracy. We selected this hyperparameter combination through a grid search over discrete values, choosing the configuration that yielded the highest test accuracy.
+
+\item \textbf{Gradient Boosting}: 100 trees built sequentially with learning rate 0.1 and maximum depth 3. We chose another tree-based model to preserve interpretability, but with a different ensemble strategy: each new tree corrects errors from the previous trees, which often outperforms parallel ensembles like Random Forest on tabular data.
+
+\item \textbf{LightGBM}: 200 trees, learning rate 0.1, 31 leaves per tree. A faster gradient boosting variant that uses histogram-based split finding rather than the exact split-finding used in standard gradient boosting. We chose LightGBM because it typically outperforms standard gradient boosting on tabular data while training significantly faster — useful for hyperparameter exploration on our limited compute budget.
+
+\item \textbf{PCA + Random Forest}: We first reduced the per-track feature space to 10 principal components, then trained a Random Forest on the reduced representation. The harmonic BPM distance was added as a separate feature after PCA. We applied this approach to test whether the high dimensionality of our feature set was contributing noise rather than signal. PCA is restricted to linear combinations of the original features, so it captures redundancy in the linear structure of the data.
+
+\item \textbf{Siamese Contrastive Network}: A 3-layer fully-connected tower (input $\to$ 64 $\to$ 32 $\to$ 16) with dropout 0.5, trained with contrastive loss (margin 1.0). Both tracks pass through the same shared network, producing 16-dimensional embeddings. Contrastive loss pulls mixable pairs close together in embedding space and pushes non-mixable pairs apart. We trained for up to 100 epochs with early stopping (patience 5) to prevent overfitting on our small dataset. We chose a Siamese architecture because the task involves comparing pairs of inputs: passing both tracks through the same shared network ensures the comparison is symmetric and prevents the model from learning different rules for each track. We wanted to validate whether there were hidden nonlinear structures in the acoustic features that linear or tree-based models could not capture.
+\end{itemize}
+
+For tree-based models, we report feature importance using sklearn's \texttt{feature\_importances\_} attribute. For PCA + Random Forest, we additionally report which original features contribute most to each principal component, allowing interpretation of the latent dimensions. The Siamese network learns embeddings end-to-end and does not directly expose per-feature importance. All models use a fixed random seed (42) to ensure reproducibility.
+
+
+\textbf{This section should describe your solution in detail. Clearly explain how your method works, including any models, algorithms, or design choices. Highlight how your solution is that different from others' solutions.}
+
+
+\section{Experiments}
+\hl{[...]}
+Moreover, in order to have a human evaluation, a survey was sent out consisting of five queries each one ranking the five most mixable songs. Users gave scores from $0$ to $5$, $0$ indicating no compatibility and $5$ indicating perfect mixability. The survey was completed by $35$ people, $20\%$ of whom are professional DJs, and some of whom are from the SoundCloud team. The five queries in the survey were all very different to each others, as can be seen from \Cref{genre}, in order to evaluate the results of our model across multiple genres. 
+
+
+\begin{table}[h]
+  \caption{Illustrating the genres of the songs sent out in the survey, indicating a diversification between the tracks. }
+  \label{genre}
+  \centering
+  \begin{tabular}{l|l}
+    \toprule
+    \cmidrule(r){1-2}
+    Title - Artist & Genre  \\
+    \midrule
+     Elsa - Johann Stone & Progressive Trance \\
+    Twelve - Psyk Rework &  Tech House
+    \\
+    Peace Keeper - Moving Fusion & Drum $\&$ Bass     \\
+    No Distance - Dixon, Guy Gerber & Progressive House     \\
+    Music Sounds Better With You - Stardust & Funky House  \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+
+
+Results from the survey show an overall satisfaction of the model of $67.84\%$. As it can be seen in \Cref{ScoreHV}, the song which received the highest score is \textit{Twelve - Psyk Rework}, which is coherent as from \Cref{genre} we can see that its genre is Tech House and the dataset used to train the model is mainly Tech House dominated. On the other hand, the song with the lowest score is \textit{Music Sounds Better With You - Stardust} which is a Funky House song and our dataset did not have any Funky House, therefore the prediction is less accurate. The remaining tree songs in \Cref{ScoreHV} have somewhat similar scores oscillating between $3.25$ and $3.54$, as in fact, their genres represent in between $6.9\%$ and $18.7\%$ of the dataset. It can be notice that the score of a song increases as the percentage of its genre in the dataset increases, which is expected as it means the model will find more similar songs to the query. 
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.7\linewidth]{ScoreHV.png}
+  \caption{Mean score out of $5$ received for the outputs coming from the $5$ queries listed in \Cref{genre} after sending out the survey. The overall satisfaction is of $67.84\%$.}
+  \label{ScoreHV}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=1\linewidth]{MeanScoreHV.png}
+  \caption{Illustrating the mean score per output per query from the survey, plotted against its rank given from the model with a best fit line. Showing that as the rank increases the mean score decreases for all queries. }
+  \label{MeanScoreHV}
+\end{figure}
+
+In \Cref{MeanScoreHV}, the data points collected from the survey are somewhat sparse, therefore a best-fit line was fitted to all of the songs scores to see whether the rank actually impacted the scores. Results show that all the best-fit lines are decreasing, which means that the rank position of the songs is somewhat accurate: the better the output song is ranked by the model, the more it is mixable with the query. As expected \textit{Twelve - Psyk Rework} is the song with the highest mean score best-fit line, while \textit{Music Sounds Better With You - Stardust} is the one with the lowest best-fit line, because of the dataset genre distribution.  
+
+
+\textbf{This section should describe how you evaluate your method. Specify datasets, baselines, and evaluation metrics. Clearly describe which experiments you run. For each experiment, state what you expect to observe and justify why your method should perform better than existing approaches. Present results clearly and interpret them.}
+
+
+\section{Discussion}
+
+\hl{[...]}
+
+The dataset used to train the model is mainly Tech House dominated, explaining why Funky House songs received worst scores than other tracks. This genre bias could be reduced if the dataset covered more songs and genres. 
+
+Moreover, a future investigation could be carried out to impose the directionality of the mixes: song $A$ mixes with song $B$, if they are consecutive in the table, but the opposite is not verified. This allows the model to take into count the intro/outro structure of the songs, which at the moment is ignored given the way the positive pairs are defined.  
+
+Another consideration made for future work was finding more realistic hard negative pairs without introducing bias, which could elevate the accuracy of the model. 
+
+ 
+
+
+
+
+
+\textbf{This section should summarize your findings and reflect on their implications. Discuss limitations of your approach and possible reasons for unexpected results. Suggest directions for future work.}
+
+
+\bibliographystyle{abbrvnat}
+\setcitestyle{numbers}
+\bibliography{references}
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\appendix
+
+\section{Technical appendices and supplementary material}
+Additional results, figures, graphs, and proofs may be submitted with the paper submission. You can include a link to code repository, but do not upload a separate PDF file for the appendix. There is no page limit for the appendices. 
+
+Note: Anything beyond the first 6 pages of the main paper is optional reading for the graders. The paper should be able to stand alone without the appendix; for example, adding critical experiments that support the main claims to an appendix is inappropriate. 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\textbf{Additional Content to Sprinkle Throughout}:  
+\end{document}
