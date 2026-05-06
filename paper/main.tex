@@ -2,6 +2,7 @@
 \usepackage{float}
 \usepackage{soul}
 \usepackage{color} % Optional: to change highlight color
+\usepackage{subcaption}
 \sethlcolor{yellow} % Sets highlight color
 
 
@@ -159,29 +160,22 @@ Negative pairs require a sampling strategy, since not all non-transitions are eq
 To assess the compatibility of each negative sampling strategy with our engineered harmonic BPM distance feature, we computed the mean and median harmonic distance across positive and negative pairs under each strategy. The results are shown in Figures~\ref{fig:hbpm-random} and~\ref{fig:hbpm-hard}.
 
 \begin{figure}[h]
-\centering
-\includegraphics[width=0.7\linewidth]{figures/harmonic_bpm_random.png}
-\caption{Harmonic BPM distance statistics under random negative sampling. Positive pairs have a mean harmonic distance of 4.90 BPM (median 2.45) compared to 11.36 BPM (median 5.81) for random negatives, providing clear separation between the two classes.}
-\label{fig:hbpm-random}
+    \centering
+    \begin{subfigure}[t]{0.49\linewidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/harmonic_bpm_random.png}
+        \caption{Random negative sampling. Positive pairs have a mean harmonic distance of 4.90 BPM (median 2.45) compared to 11.45 BPM (median 5.81) for random negatives, providing clear separation between the two classes.}
+        \label{fig:hbpm-random}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\linewidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/harmonic_bpm_hard.png}
+        \caption{Hard negative sampling. The relationship inverts: hard negatives have a mean harmonic distance of 1.85 BPM (median 2.72), smaller than the 4.90 BPM mean of positive pairs. Because hard negatives are constrained within $\pm 5$ BPM of a positive anchor, they end up closer in tempo than the positive pairs themselves.}
+        \label{fig:hbpm-hard}
+    \end{subfigure}
+    \label{fig:hbpm-comparison}
 \end{figure}
-
-\begin{figure}[h]
-\centering
-\includegraphics[width=0.7\linewidth]{figures/harmonic_bpm_hard.png}
-\caption{Harmonic BPM distance statistics under hard negative sampling. The relationship inverts: hard negatives have a mean harmonic distance of 1.86 BPM (median 2.72), which is smaller than the 4.90 BPM mean of positive pairs. Because hard negatives are constrained within $\pm 5$ BPM of a positive anchor, they end up closer in tempo than the positive pairs themselves.}
-\label{fig:hbpm-hard}
-\end{figure}
-
-
-\bigskip
-\bigskip
-\bigskip
-\bigskip
-\bigskip
-\bigskip
-\bigskip
-\bigskip
-\bigskip
 
 Under random negative sampling, the harmonic BPM distance feature carries strong discriminative signal: positive pairs have substantially lower harmonic distance than negatives. Under hard negative sampling, this relationship inverts, with negatives showing a smaller mean harmonic distance than positives. This is a direct consequence of the hard sampling constraint, which by construction selects negatives that are BPM-similar to a positive anchor. Because harmonic BPM distance is a feature we engineered specifically to capture the tempo compatibility that DJs rely on when choosing tracks, we chose random negative sampling for our primary pipeline. Hard negatives remain valuable as a stricter evaluation strategy that removes the easy BPM cue, and we report results under both strategies in Section 4 to provide a complete picture of model performance.
 
@@ -235,23 +229,21 @@ Moreover, in order to have a human evaluation, a survey was sent out consisting 
 
 
 
-Results from the survey show an overall satisfaction of the model of $67.84\%$. As it can be seen in \Cref{ScoreHV}, the song which received the highest score is \textit{Twelve - Psyk Rework}, which is coherent as from \Cref{genre} we can see that its genre is Tech House and the dataset used to train the model is mainly Tech House dominated. On the other hand, the song with the lowest score is \textit{Music Sounds Better With You - Stardust} which is a Funky House song and our dataset did not have any Funky House, therefore the prediction is less accurate. The remaining tree songs in \Cref{ScoreHV} have somewhat similar scores oscillating between $3.25$ and $3.54$, as in fact, their genres represent in between $6.9\%$ and $18.7\%$ of the dataset. It can be notice that the score of a song increases as the percentage of its genre in the dataset increases, which is expected as it means the model will find more similar songs to the query. 
+Results from the survey show an overall satisfaction of the model of $67.84\%$. As it can be seen in \Cref{ScoreHV}, the song which received the highest score is \textit{Twelve - Psyk Rework}, which is coherent as from \Cref{genre} we can see that its genre is Tech House and the dataset used to train the model is mainly Tech House dominated. On the other hand, the song with the lowest score is \textit{Music Sounds Better With You - Stardust} which is a Funky House song and our dataset did not have any Funky House, therefore the prediction is less accurate. The remaining three songs in \Cref{ScoreHV} have somewhat similar scores oscillating between $3.26$ and $3.56$ on the 0--5 scale, as in fact, their genres represent in between $6.9\%$ and $18.7\%$ of the dataset. It can be notice that the score of a song increases as the percentage of its genre in the dataset increases, which is expected as it means the model will find more similar songs to the query. 
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.7\linewidth]{figures/human_validation_scores.png}
-  \caption{Mean score out of $5$ received for the outputs coming from the $5$ queries listed in \Cref{genre} after sending out the survey. The overall satisfaction is of $67.84\%$.}
-  \label{ScoreHV}
+  \begin{minipage}[c]{0.62\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/query_rank_rating.png}
+  \end{minipage}%
+  \hfill
+  \begin{minipage}[c]{0.34\linewidth}
+    \caption{Per-query, per-rank mean survey rating for the five queries in \Cref{genre}, on the original 0--5 scale averaged across raters. The right-hand strip gives the per-query mean across ranks; the bottom strip gives the per-rank mean across queries. Overall mean rating across all cells is $3.39$ (equivalent to $67.84\%$ satisfaction). The Rank-5 cell for \textit{No Distance} is missing because that recommendation was not collected in the survey.}
+    \label{ScoreHV}
+  \end{minipage}
 \end{figure}
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=1\linewidth]{figures/mean_score_per_rank.png}
-  \caption{Illustrating the mean score per output per query from the survey, plotted against its rank given from the model with a best fit line. Showing that as the rank increases the mean score decreases for all queries. }
-  \label{MeanScoreHV}
-\end{figure}
-
-In \Cref{MeanScoreHV}, the data points collected from the survey are somewhat sparse, therefore a best-fit line was fitted to all of the songs scores to see whether the rank actually impacted the scores. Results show that all the best-fit lines are decreasing, which means that the rank position of the songs is somewhat accurate: the better the output song is ranked by the model, the more it is mixable with the query. As expected \textit{Twelve - Psyk Rework} is the song with the highest mean score best-fit line, while \textit{Music Sounds Better With You - Stardust} is the one with the lowest best-fit line, because of the dataset genre distribution.  
 
 
 \textbf{This section should describe how you evaluate your method. Specify datasets, baselines, and evaluation metrics. Clearly describe which experiments you run. For each experiment, state what you expect to observe and justify why your method should perform better than existing approaches. Present results clearly and interpret them.}
