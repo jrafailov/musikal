@@ -31,6 +31,8 @@ env/
 *.ckpt
 *.npy
 *.npz
+*.joblib
+*.parquet
 
 # LaTeX build artifacts
 *.aux
@@ -67,3 +69,10 @@ data/clean/baseline/lavi_pair_eval_answer_key.csv
 
 # Nested git clones / external reference repos — not part of our tree
 third_party/
+
+# Loose figures dumped at repo root by score_lavi_survey.py / HumanValidation.py.
+# Real paper figures live under paper/figures/.
+/*.png
+
+# One-off paper bundles
+Final_Project_ML_Paper.zip
