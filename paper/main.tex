@@ -83,11 +83,10 @@
 
 \begin{document}
 
-
 \maketitle
 
 \begin{abstract}
-DJs spend countless hours combing through their music libraries to find songs that mix well together, taking time away from the actual craft of executing seamless transitions. We address this problem by training a recommendation system that takes a song's audio features as input and recommends the top 5 most mixable tracks. Unlike existing music recommenders that rely on user taste, genre, or artist metadata, we trained our models exclusively on the acoustic properties of audio. We framed the task as binary pair classification, with positive pairs drawn from real DJ transitions and negative pairs sampled from non-transitions. We compared six models including Random Forest, Gradient Boosting, LightGBM, PCA with Random Forest, and a Siamese contrastive network. LightGBM achieved the highest test accuracy at $78.6\%$ under random negative sampling, with harmonic BPM distance and tempo emerging as the most predictive features. A survey of 35 participants ($20\%$ professional DJs) reported $67.84\%$ overall satisfaction with the recommended tracks.
+DJs spend countless hours combing through their music libraries to find songs that mix well together, taking time away from the craft of executing seamless transitions. We address this problem by training a recommendation system that takes a song's audio features as input and ranks the entire corpus by mixability, surfacing the most compatible candidates to the top. Unlike existing music recommenders that rely on user taste, genre, or artist metadata, we trained our models exclusively on the acoustic properties. We framed the task as binary pair classification, with positive pairs drawn from real DJ transitions and negative pairs sampled from non-transitions. We compared six models including Random Forest, Gradient Boosting, LightGBM, PCA with Random Forest, and a Siamese contrastive network. LightGBM achieved the highest test accuracy at $78.6\%$ under random negative sampling, with harmonic BPM distance and tempo emerging as the most predictive features. A survey of 35 participants ($20\%$ professional DJs) reported $67.84\%$ overall satisfaction with the recommended tracks.
 \end{abstract}
 
 
@@ -206,7 +205,9 @@ We trained six models on the binary pair classification task.
 \noindent\textbf{(6) Siamese Contrastive Network.} A 3-layer fully-connected tower (input $\to$ 64 $\to$ 32 $\to$ 16) with dropout 0.5, trained with contrastive loss (margin 1.0). Both tracks pass through the same shared network, producing 16-dimensional embeddings. Contrastive loss pulls mixable pairs close together in embedding space and pushes non-mixable pairs apart. We trained for up to 100 epochs with early stopping (patience 5) to prevent overfitting on our small dataset. We chose a Siamese architecture because the task involves comparing pairs of inputs: passing both tracks through the same shared network ensures the comparison is symmetric and prevents the model from learning different rules for each track. We wanted to validate whether there were hidden nonlinear structures in the acoustic features that linear or tree-based models could not capture.
 
 For tree-based models, we report feature importance using sklearn's \texttt{feature\_importances\_} attribute. For PCA + Random Forest, we additionally report which original features contribute most to each principal component, allowing interpretation of the latent dimensions. The Siamese network learns embeddings end-to-end and does not directly expose per-feature importance. All models use a fixed random seed (42) to ensure reproducibility.
-
+ ******
+\paragraph{Comparing model accuracy.} \Cref{fig:model-eval} (left) reports test accuracy for all six models under both negative-sampling regimes. Under random negatives the Siamese network leads at $0.778$, with LightGBM and Gradient Boosting close behind at $0.763$ and $0.762$. Under hard negatives the picture inverts: Gradient Boosting takes the top spot at $0.722$ while Siamese drops to last at $0.687$. Tree-based models cluster within $0.013$ of each other on the hard regime, suggesting the harder pair distinction is dominated by tabular tempogram and MFCC structure that trees handle well, whereas the Siamese embedding leaned more heavily on the easy harmonic BPM cue that hard negatives are constructed to remove. Based on these results we use Gradient Boosting as the recommender of record for the retrieval evaluation in \Cref{fig:hit-at-k}, since it sustains its accuracy across both regimes.
+******
 
 \section{Results and Model Evaluation}
 
@@ -214,24 +215,36 @@ We evaluate the trained models along three axes: which input features actually d
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.78\linewidth]{figures/feature_importance_gbm.png}
-  \caption{Gradient Boosting feature importance, top 10 base features per regime (per-feature contributions from the $A$, $B$, and $|A - B|$ panels are summed). Under random negatives the harmonic BPM distance dominates at $29.5\%$. Under hard negatives ($\pm 5$ BPM) it collapses to $2.7\%$ (rank 5) and Tempo takes the top spot; the model is forced to lean on tempogram and MFCC features instead.}
-  \label{fig:feature-importance}
+  \begin{minipage}[c]{0.41\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/model_accuracy.png}
+  \end{minipage}%
+  \hfill
+  \begin{minipage}[c]{0.58\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/feature_importance_gbm.png}
+  \end{minipage}
+  *****
+  \caption{\textbf{Left:} test accuracy across the six models under both negative-sampling regimes, sorted left to right by random-negative accuracy. Siamese is best on random and worst on hard; the dashed line is chance ($0.5$) on the balanced binary task. \textbf{Right:} Gradient Boosting feature importance, top 10 base features per regime (per-feature contributions from the $A$, $B$, and $|A - B|$ panels are summed). Under random negatives the harmonic BPM distance dominates at $29.5\%$. Under hard negatives ($\pm 5$ BPM) it collapses to $2.7\%$ (rank 5) and Tempo takes the top spot.}
+  \label{fig:model-eval}
+  *****
 \end{figure}
 
 \begin{figure}[H]
   \centering
-  \begin{minipage}[c]{0.46\linewidth}
+  \begin{minipage}[c]{0.50\linewidth}
     \centering
     \includegraphics[width=\linewidth]{figures/hit_at_k_curve.png}
   \end{minipage}%
   \hfill
-  \begin{minipage}[c]{0.50\linewidth}
+  \begin{minipage}[c]{0.46\linewidth}
     \caption{Hit@$k$ on the held-out test corpus: share of $n = 741$ (query, true-next-track) pairs whose truth lands in the top $k$ when the gradient-boosting model ranks all 1042 test-corpus candidates by posterior. Dashed line is the random-pick baseline $k / 1042$ with shaded 95\% Wald CI. The model sits $5.7\times$ to $9.8\times$ above chance across $k \in [1, 50]$, with the largest relative lift at small $k$.}
     \label{fig:hit-at-k}
   \end{minipage}
 \end{figure}
-
+**********
+\paragraph{Retrieval metrics.} On the same 668-query test corpus the Gradient Boosting recommender achieves $\mathrm{MRR} = 0.042$, $\mathrm{recall}@5 = 0.043$, and $\mathrm{recall}@10 = 0.078$. The corresponding random-pick baselines are $\mathrm{recall}@5 = 0.0048$ and $\mathrm{recall}@10 = 0.0096$, so the model sits $8.9\times$ and $8.1\times$ above chance respectively. Top-$k$ precision is correspondingly $\mathrm{precision}@5 = 0.0093$ and $\mathrm{precision}@10 = 0.0084$. The median rank of the true next track is $114$ out of $1043$ candidates, so on a typical query the right answer is already inside the top $11\%$ of the ranking. Recall climbs to $0.276$ at $k = 50$, confirming that the model concentrates the truth toward the head of the list rather than dispersing it across the candidate pool.
+**********
 Moreover, in order to have a human evaluation, a survey was sent out consisting of five queries each one ranking the five most mixable songs. Users gave scores from $0$ to $5$, $0$ indicating no compatibility and $5$ indicating perfect mixability. The survey was completed by $35$ people, $20\%$ of whom are professional DJs, and some of whom are from the SoundCloud team. The five queries in the survey span distinct genres (see \Cref{ScoreHV}) so we could evaluate the model across multiple styles.
 
 

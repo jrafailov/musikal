@@ -19,6 +19,8 @@ Usage
 import json
 from pathlib import Path
 
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 import matplotlib.ticker as mticker
@@ -84,7 +86,11 @@ def main():
     rand_lo = np.clip(random_curve - z * rand_se, 0, 1)
     rand_hi = random_curve + z * rand_se
 
-    fig, ax = plt.subplots(figsize=(5.0, 5.0))
+    # Native size targets a ~0.50 linewidth render in the paper
+    # (~3.3 inch wide on NeurIPS body text), so LaTeX downscales by less
+    # and the source font sizes survive into the rendered PDF without
+    # going tiny.
+    fig, ax = plt.subplots(figsize=(3.6, 2.8))
 
     # gap fill between random expected and model, drawn first so it sits
     # under everything
@@ -109,29 +115,29 @@ def main():
     # The last point (k=50) has no curve to its right, so put it above-right.
     for k in HIGHLIGHT_KS:
         y = hit_curve[k - 1]
-        ax.scatter([k], [y], color=MODEL_COLOR, s=58,
-                   edgecolor="white", linewidth=1.4, zorder=6)
+        ax.scatter([k], [y], color=MODEL_COLOR, s=28,
+                   edgecolor="white", linewidth=1.0, zorder=6)
         if k == HIGHLIGHT_KS[-1]:
-            xt, yt, ha = 8, 8, "left"
+            xt, yt, ha = 5, 4, "left"
         else:
-            xt, yt, ha = -8, 10, "right"
+            xt, yt, ha = -5, 5, "right"
         ax.annotate(
             f"{y:.1%}",
             xy=(k, y), xytext=(xt, yt), textcoords="offset points",
-            fontsize=13, color=MODEL_COLOR, ha=ha, va="bottom",
+            fontsize=8, color=MODEL_COLOR, ha=ha, va="bottom",
             fontweight="bold",
         )
 
-    ax.set_xlabel("k", fontsize=15, color="#222", fontweight="bold")
-    ax.set_ylabel("Hit@k", fontsize=15, color="#222", fontweight="bold")
+    ax.set_xlabel("k", fontsize=10, color="#222", fontweight="bold")
+    ax.set_ylabel("Hit@k", fontsize=10, color="#222", fontweight="bold")
 
     y_top = max(hit_curve.max(), random_curve.max()) * 1.18
     ax.set_xlim(0, 51)
     ax.set_ylim(0, y_top)
     ax.set_xticks([1, 5, 10, 20, 30, 40, 50])
     ax.yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1.0, decimals=0))
-    ax.tick_params(axis="both", labelsize=13, color="#555",
-                   labelcolor="#222", length=5, pad=5)
+    ax.tick_params(axis="both", labelsize=8, color="#555",
+                   labelcolor="#222", length=3, pad=2)
     for label in ax.get_xticklabels() + ax.get_yticklabels():
         label.set_fontweight("bold")
 
@@ -144,8 +150,8 @@ def main():
         ax.spines[spine].set_color("#555")
         ax.spines[spine].set_linewidth(0.9)
 
-    leg = ax.legend(loc="upper left", frameon=False, fontsize=13,
-                    handlelength=2.0, borderpad=0.2,
+    leg = ax.legend(loc="upper left", frameon=False, fontsize=8,
+                    handlelength=1.6, borderpad=0.15,
                     bbox_to_anchor=(0.01, 0.99))
     for text in leg.get_texts():
         text.set_color("#222")
