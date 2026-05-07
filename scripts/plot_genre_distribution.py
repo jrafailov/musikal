@@ -251,7 +251,7 @@ def plot_bubbles_stacked(top10, top10_pct, out_path):
         ax.text(cx, cy, f"{wrap_label(names[i])}\n{pcts[i]:.1f}%",
                 ha='center', va='center',
                 fontsize=fs, fontweight='bold',
-                color='white', zorder=3, linespacing=1.15)
+                color='black', zorder=3, linespacing=1.15)
 
     # Callout strip below the baseline. Labels are spread across a wider
     # x-range than the tail's footprint so they get breathing room; thin

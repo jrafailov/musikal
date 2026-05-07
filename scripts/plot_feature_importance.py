@@ -20,6 +20,7 @@ from pathlib import Path
 
 import matplotlib
 matplotlib.use("Agg")  # headless WSL has no display
+import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -31,14 +32,25 @@ HARD_CSV = REPO_ROOT / "data/clean/baseline/all_models/hard/feature_importance_g
 figures_dir = REPO_ROOT / "paper" / "figures"
 figures_dir.mkdir(parents=True, exist_ok=True)
 
+
+def _pick_sans_font():
+    available = {f.name for f in fm.fontManager.ttflist}
+    for cand in ("Helvetica", "Helvetica Neue", "Nimbus Sans",
+                 "Liberation Sans", "Arial", "DejaVu Sans"):
+        if cand in available:
+            return cand
+    return "sans-serif"
+
+
 # theme_pubr-style defaults: clean white background, no grid, black spines
-# and ticks, sans-serif throughout. Matches ggpubr's publication look.
+# and ticks, sans-serif throughout. Font sizes pushed up so the figure stays
+# legible after LaTeX downscales it into the side-by-side caption layout.
 plt.rcParams.update({
-    "font.family": ["Helvetica", "Arial", "Nimbus Sans", "sans-serif"],
-    "font.size": 11,
-    "axes.titlesize": 14,
+    "font.family": _pick_sans_font(),
+    "font.size": 15,
+    "axes.titlesize": 18,
     "axes.titleweight": "bold",
-    "axes.labelsize": 11,
+    "axes.labelsize": 15,
     "axes.labelweight": "bold",
     "axes.linewidth": 1.0,
     "axes.edgecolor": "black",
@@ -52,9 +64,13 @@ plt.rcParams.update({
     "ytick.major.width": 1.0,
     "xtick.color": "black",
     "ytick.color": "black",
+    "xtick.labelsize": 13,
+    "ytick.labelsize": 13,
     "axes.grid": False,
     "legend.frameon": False,
-    "legend.fontsize": 10,
+    "legend.fontsize": 13,
+    "pdf.fonttype": 42,
+    "ps.fonttype": 42,
 })
 
 # harmonic BPM gets the same blue used for positives in plot_harmonic_bpm.py
@@ -133,7 +149,7 @@ def plot_panel(ax, agg, title, title_color, x_max):
     label_offset = x_max * 0.012
     for i, pct in enumerate(pcts):
         ax.text(pct + label_offset, i, f"{pct:.1f}%",
-                ha="left", va="center", fontsize=9.5)
+                ha="left", va="center", fontsize=12)
 
     ax.set_yticks(y)
     ax.set_yticklabels(pretty)
@@ -160,18 +176,19 @@ def main():
     x_max = max(random_agg.head(TOP_N).importance.max(),
                 hard_agg.head(TOP_N).importance.max()) * 100.0
 
-    fig, axes = plt.subplots(1, 2, figsize=(9.5, 5.0))
+    # Wider, shorter aspect: avoids the wasted vertical space the previous
+    # 10.5 x 6.0 layout left between panel titles and bars. Suptitle is
+    # dropped because the caption already names the figure.
+    fig, axes = plt.subplots(1, 2, figsize=(11.0, 4.6))
     plot_panel(axes[0], random_agg, "Random negatives",
                PANEL_TITLE_COLOR, x_max)
     plot_panel(axes[1], hard_agg, "Hard negatives (±5 BPM)",
                PANEL_TITLE_COLOR, x_max)
 
-    fig.suptitle("Gradient Boosting feature importance",
-                 fontsize=17, fontweight="bold", y=1.03)
-
     out_path = figures_dir / "feature_importance_gbm.png"
     plt.tight_layout()
-    plt.savefig(out_path, dpi=200, bbox_inches="tight")
+    plt.savefig(out_path, dpi=200, bbox_inches="tight",
+                pad_inches=0.05, facecolor="white")
     plt.close(fig)
     print(f"wrote {out_path.relative_to(REPO_ROOT)}")
 

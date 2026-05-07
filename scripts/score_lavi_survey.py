@@ -18,7 +18,21 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 
-plt.rcParams["font.family"] = ["Helvetica", "Arial", "Nimbus Sans", "sans-serif"]
+import matplotlib.font_manager as fm
+
+
+def _pick_sans_font():
+    available = {f.name for f in fm.fontManager.ttflist}
+    for cand in ("Helvetica", "Helvetica Neue", "Nimbus Sans",
+                 "Liberation Sans", "Arial", "DejaVu Sans"):
+        if cand in available:
+            return cand
+    return "sans-serif"
+
+
+plt.rcParams["font.family"] = _pick_sans_font()
+plt.rcParams["pdf.fonttype"] = 42
+plt.rcParams["ps.fonttype"] = 42
 
 # resolve paper/figures relative to this file so cwd doesn't matter
 figures_dir = Path(__file__).resolve().parents[1] / "paper" / "figures"
@@ -253,9 +267,28 @@ plt.show()
 
 
 # ----- same heatmap on the raw 0-5 rating scale -----
+# The mean strips (per-query and per-rank) are folded into the matrix as an
+# extra column and row instead of floated rectangles, so they sit inside
+# the same grid as the data cells. A black separator line marks the edge
+# between data and summary. Y-tick labels include each track's genre on a
+# second line, so this figure carries everything Table 1 used to.
 
-fig, ax = plt.subplots(figsize=(9, 5.5))
-masked5 = np.ma.masked_invalid(matrix)
+heatmap_genres = {
+    "Elsa": "Progressive Trance",
+    "Twelve": "Tech House",
+    "Peace Keeper": "Drum & Bass",
+    "No Distance": "Progressive House",
+    "Music Sounds Better\nWith You": "Funky House",
+}
+# Display name overrides for the y-tick labels. Two-line tracks are
+# rendered with the second line slightly indented for visual clarity.
+heatmap_display = {
+    "Elsa": "Elsa",
+    "Twelve": "Twelve",
+    "Peace Keeper": "Peace Keeper",
+    "No Distance": "No Distance",
+    "Music Sounds Better\nWith You": "Music Sounds\nBetter With You",
+}
 
 bounds5 = [0, 1, 2, 3, 4, 5]
 discrete5 = base(np.linspace(0.05, 0.95, len(bounds5) - 1))
@@ -263,48 +296,71 @@ cmap5 = _copy.copy(plt.matplotlib.colors.ListedColormap(discrete5))
 cmap5.set_bad(color="#dddddd")
 norm5 = BoundaryNorm(bounds5, cmap5.N)
 
-im5 = ax.imshow(masked5, cmap=cmap5, norm=norm5, aspect="auto")
-ax.set_xlim(-0.5, 5.5)
-ax.set_ylim(len(row_labels) + 0.5, -0.5)
+n_rows, n_cols = matrix.shape
+row_means5 = np.nanmean(matrix, axis=1)
+col_means5 = np.nanmean(matrix, axis=0)
+overall_mean5 = float(np.nanmean(matrix))
 
-for i in range(len(row_labels)):
-    for j in range(5):
-        v = matrix[i, j]
+ext = np.full((n_rows + 1, n_cols + 1), np.nan)
+ext[:n_rows, :n_cols] = matrix
+ext[:n_rows, n_cols] = row_means5
+ext[n_rows, :n_cols] = col_means5
+ext[n_rows, n_cols] = overall_mean5
+masked_ext = np.ma.masked_invalid(ext)
+
+fig, ax = plt.subplots(figsize=(7.0, 7.0))
+im5 = ax.imshow(masked_ext, cmap=cmap5, norm=norm5, aspect="equal")
+
+for i in range(n_rows + 1):
+    for j in range(n_cols + 1):
+        v = ext[i, j]
         text = "—" if np.isnan(v) else f"{v:.2f}"
-        ax.text(j, i, text, ha="center", va="center", fontsize=18,
+        ax.text(j, i, text, ha="center", va="center", fontsize=15,
                 color="black", weight="bold")
 
-ax.set_xticks(np.arange(5))
-ax.set_xticklabels([f"Rank {r}" for r in range(1, 6)], fontsize=16)
-ax.set_yticks(np.arange(len(row_labels)))
-ax.set_yticklabels(row_labels, fontsize=14)
-ax.set_xlabel("Model Rank", fontsize=20, labelpad=24)
-ax.set_ylabel("Query Track", fontsize=20)
+x_labels = [f"Rank {r}" for r in range(1, n_cols + 1)] + ["Mean"]
 
-# row means on the right (raw rating)
-row_means5 = np.nanmean(matrix, axis=1)
-for i, m in enumerate(row_means5):
-    face = cmap5(norm5(m))
-    ax.add_patch(Rectangle((4.55, i - 0.45), 0.9, 0.9, facecolor=face,
-                           edgecolor="white", linewidth=1.5, clip_on=False))
-    ax.text(5.0, i, f"{m:.2f}", ha="center", va="center",
-            fontsize=14, color="black", weight="bold")
+ax.set_xticks(np.arange(n_cols + 1))
+ax.set_xticklabels(x_labels, fontsize=14)
+ax.set_yticks(np.arange(n_rows + 1))
+ax.set_yticklabels([""] * (n_rows + 1))
+ax.set_xlabel("Model Rank", fontsize=16, labelpad=10)
+ax.tick_params(axis="both", length=0)
 
-# column means below the x-axis (raw rating)
-col_means5 = np.array([np.nanmean(matrix[:, j]) for j in range(5)])
-for j, m in enumerate(col_means5):
-    face = cmap5(norm5(m))
-    ax.add_patch(Rectangle((j - 0.45, len(row_labels) - 0.45), 0.9, 0.9,
-                           facecolor=face, edgecolor="white", linewidth=1.5,
-                           clip_on=False))
-    ax.text(j, len(row_labels), f"{m:.2f}", ha="center",
-            va="center", fontsize=14, color="black", weight="bold")
+# Black separators between the data block and the mean strip
+ax.plot([n_cols - 0.5, n_cols - 0.5], [-0.5, n_rows + 0.5],
+        color="black", linewidth=1.6, clip_on=False)
+ax.plot([-0.5, n_cols + 0.5], [n_rows - 0.5, n_rows - 0.5],
+        color="black", linewidth=1.6, clip_on=False)
 
-cbar = fig.colorbar(im5, ax=ax, shrink=0.85, pad=0.12,
+# Custom two-line y-tick labels: bold track name on top, normal-weight
+# italic genre underneath in gray. Mean row gets a single normal-weight
+# label so it doesn't compete with the track names visually.
+for i, name in enumerate(row_labels):
+    display = heatmap_display.get(name, name)
+    genre = heatmap_genres[name]
+    n_lines = display.count("\n") + 1
+    track_y = i - 0.16 if n_lines == 1 else i - 0.22
+    genre_y = i + 0.22 if n_lines == 1 else i + 0.30
+    ax.text(-0.7, track_y, display, ha="right",
+            va="center", fontsize=14, fontweight="bold", color="#222",
+            linespacing=1.0)
+    ax.text(-0.7, genre_y, genre, ha="right", va="center",
+            fontsize=12, fontweight="normal", color="#222")
+ax.text(-0.7, n_rows, "Mean", ha="right", va="center",
+        fontsize=14, fontweight="normal", color="#222")
+
+ax.set_xlim(-0.5, n_cols + 0.5)
+ax.set_ylim(n_rows + 0.5, -0.5)
+
+cbar = fig.colorbar(im5, ax=ax, shrink=0.50, pad=0.03,
+                    fraction=0.04, aspect=18,
                     boundaries=bounds5, ticks=bounds5, spacing="uniform")
-cbar.set_label("Mean Rating (0–5)", fontsize=14)
-cbar.ax.set_yticklabels([f"{b}" for b in bounds5])
+cbar.set_label("Mean rating (0–5)", fontsize=16)
+cbar.ax.set_yticklabels([f"{b}" for b in bounds5], fontsize=14)
+cbar.outline.set_visible(False)
 
-plt.tight_layout()
-plt.savefig(figures_dir / "query_rank_rating.png", dpi=150, bbox_inches="tight")
+plt.tight_layout(pad=0.4)
+plt.savefig(figures_dir / "query_rank_rating.png", dpi=180,
+            bbox_inches="tight", pad_inches=0.05, facecolor="white")
 plt.show()

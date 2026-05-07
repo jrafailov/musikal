@@ -119,19 +119,21 @@ def main():
             f"{y:.1%}",
             xy=(k, y), xytext=(xt, yt), textcoords="offset points",
             fontsize=13, color=MODEL_COLOR, ha=ha, va="bottom",
-            fontweight="medium",
+            fontweight="bold",
         )
 
-    ax.set_xlabel("k", fontsize=15)
-    ax.set_ylabel("Hit@k", fontsize=15)
+    ax.set_xlabel("k", fontsize=15, color="#222", fontweight="bold")
+    ax.set_ylabel("Hit@k", fontsize=15, color="#222", fontweight="bold")
 
     y_top = max(hit_curve.max(), random_curve.max()) * 1.18
     ax.set_xlim(0, 51)
     ax.set_ylim(0, y_top)
     ax.set_xticks([1, 5, 10, 20, 30, 40, 50])
     ax.yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1.0, decimals=0))
-    ax.tick_params(axis="both", labelsize=13, color="#999",
-                   length=5, pad=5)
+    ax.tick_params(axis="both", labelsize=13, color="#555",
+                   labelcolor="#222", length=5, pad=5)
+    for label in ax.get_xticklabels() + ax.get_yticklabels():
+        label.set_fontweight("bold")
 
     ax.grid(True, axis="y", linestyle="-", linewidth=0.5,
             color="#e6e6e6", zorder=0)
@@ -139,14 +141,15 @@ def main():
     for spine in ("top", "right"):
         ax.spines[spine].set_visible(False)
     for spine in ("left", "bottom"):
-        ax.spines[spine].set_color("#999")
-        ax.spines[spine].set_linewidth(0.8)
+        ax.spines[spine].set_color("#555")
+        ax.spines[spine].set_linewidth(0.9)
 
     leg = ax.legend(loc="upper left", frameon=False, fontsize=13,
                     handlelength=2.0, borderpad=0.2,
                     bbox_to_anchor=(0.01, 0.99))
     for text in leg.get_texts():
-        text.set_color("#333")
+        text.set_color("#222")
+        text.set_fontweight("bold")
 
     out_path = FIGURES_DIR / "hit_at_k_curve.png"
     plt.tight_layout()

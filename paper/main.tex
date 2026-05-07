@@ -3,6 +3,7 @@
 \usepackage{soul}
 \usepackage{color} % Optional: to change highlight color
 \usepackage{subcaption}
+\captionsetup{font=small}
 \sethlcolor{yellow} % Sets highlight color
 
 
@@ -124,18 +125,18 @@ We use the open \emph{mir-aidj djmix-dataset} \citep{mir_aidj_djmix} as our sour
 
 \paragraph{Scraping audio.} We first filtered the track set to those appearing in at least three distinct mixes so that the model is trained on tracks that DJs actually reach for repeatedly rather than one-off picks from a single mix. This collapses the long tail and brings the candidate pool down to roughly 4{,}100 tracks. For each candidate we then queried YouTube for the corresponding song and downloaded the audio with \texttt{yt-dlp} \citep{ytdlp}. Around 10--20\% of candidates failed to download for various reasons (404 error, age restrictions, etc.). After this stage we had 3{,}827 tracks with usable audio.
 
-\paragraph{Cleaning the tracklist metadata.} A non-trivial fraction of raw tracklist rows had titles that could not be parsed cleanly into an artist::title pair (formatting was inconsistent across mixes), and some unique track strings were near-duplicates of others (whitespace, ``feat.'' versus ``ft.'', artist order). We deduped on a normalized version of the title and dropped rows whose track identifier could not be matched back to a row in the audio features table. When an unparseable or unfeatured track sat between two clean tracks in a mix---tracklist [A, B, *C*, D]---we kept the surrounding pairs (A,~B) and dropped (B,~C) and (C,~D) rather than adding a bridged pair (B,~D); a positive is defined to be a real observed transition. We also dropped pairs where the same track appeared on both sides (a small number of self loops introduced by tracklist annotation errors).
+\paragraph{Cleaning the tracklist metadata.} A non-trivial fraction of raw tracklist rows had titles that could not be parsed cleanly into an artist::title pair (formatting was inconsistent across mixes), and some unique track strings were near-duplicates of others (whitespace, ``feat.'' versus ``ft.'', artist order). We deduped on a normalized version of the title and dropped rows whose track identifier could not be matched back to a row in the audio features table. When an unparseable or unfeatured track existed between two clean tracks in a mix---tracklist [A, B, *C*, D]---we kept the surrounding pairs (A,~B) and dropped (B,~C) and (C,~D) rather than adding a bridged pair (B,~D). A positive is therefore defined to be a \textit{real observed transition}. We also dropped pairs where the same track appeared on both sides (introduced by tracklist annotation errors).
 
 \paragraph{Considerations during selection.} Two tradeoffs drove the choices above. We preferred the djmix-dataset over scraping 1001Tracklists or building our own corpus because it is openly redistributable as metadata and the audio acquisition layer is intentionally separated from the tracklist information. Second, every cleaning step was set up so that it could only \emph{remove} rows: we drop tracks rather than impute features, drop pairs rather than bridge missing tracks, and drop unmatched titles rather than match them. The resulting positives are conservative but each one corresponds to a transition a human DJ had actually played.
 
 \begin{figure}[h]
   \centering
-  \begin{minipage}[c]{0.58\linewidth}
+  \begin{minipage}[c]{0.70\linewidth}
     \centering
     \includegraphics[width=\linewidth]{figures/genre_distribution_stacked.png}
   \end{minipage}%
   \hfill
-  \begin{minipage}[c]{0.40\linewidth}
+  \begin{minipage}[c]{0.28\linewidth}
     \caption{Genre mix of the 3{,}827 tracks in the audio features table, derived from MixesDB tags propagated through the mixes each track appears in. Each circle is one of the top-10 genres; circle area is proportional to track count.}
     \label{fig:corpus-genres}
   \end{minipage}
@@ -166,10 +167,10 @@ Positive pairs are drawn directly from observed adjacent transitions in the DJ M
 
 Negative pairs require a sampling strategy, since not all non-transitions are equally informative about whether two songs are incompatible. We evaluated two strategies:
 
-\begin{itemize}
+\begin{enumerate}
 \item \textbf{Random negatives}: Two tracks sampled uniformly at random from the track pool, with the constraint that the pair is not a known positive transition in either direction.
 \item \textbf{Hard negatives}: For each positive anchor track, we sample a candidate within $\pm 5$ BPM that is not a known transition. This forces the model to learn distinctions beyond simple BPM matching.
-\end{itemize}
+\end{enumerate}
 
 To assess the compatibility of each negative sampling strategy with our engineered harmonic BPM distance feature, we computed the mean and median harmonic distance across positive and negative pairs under each strategy. The results are shown in \Cref{fig:hbpm-comparison}.
 
@@ -192,111 +193,77 @@ Under random negative sampling, the harmonic BPM distance feature carries strong
 
 We trained six models on the binary pair classification task.
 
-\begin{itemize}
-\item \textbf{Random Forest (default)}: 100 trees, no maximum depth, default sklearn settings. This serves as our baseline. We chose Random Forest over logistic regression or other generalized linear models because we wanted to maintain a human in the loop and prioritize feature interpretability — Random Forest exposes per-feature importance, while linear models capture only linear relationships.
-\item \textbf{Random Forest (tuned)}: 500 trees, maximum depth 20, minimum 5 samples per split. We added regularization through capped tree depth to prevent overfitting, since the default model showed perfect train accuracy. We selected this hyperparameter combination through a grid search over discrete values, choosing the configuration that yielded the highest test accuracy.
-\item \textbf{Gradient Boosting}: 100 trees built sequentially with learning rate 0.1 and maximum depth 3. We chose another tree-based model to preserve interpretability, but with a different ensemble strategy: each new tree corrects errors from the previous trees, which often outperforms parallel ensembles like Random Forest on tabular data.
-\item \textbf{LightGBM}: 200 trees, learning rate 0.1, 31 leaves per tree. A faster gradient boosting variant that uses histogram-based split finding rather than the exact split-finding used in standard gradient boosting. We chose LightGBM because it typically outperforms standard gradient boosting on tabular data while training significantly faster — useful for hyperparameter exploration on our limited compute budget.
-\item \textbf{PCA + Random Forest}: We first reduced the per-track feature space to 10 principal components, then trained a Random Forest on the reduced representation. The harmonic BPM distance was added as a separate feature after PCA. We applied this approach to test whether the high dimensionality of our feature set was contributing noise rather than signal. PCA is restricted to linear combinations of the original features, so it captures redundancy in the linear structure of the data.
-\item \textbf{Siamese Contrastive Network}: A 3-layer fully-connected tower (input $\to$ 64 $\to$ 32 $\to$ 16) with dropout 0.5, trained with contrastive loss (margin 1.0). Both tracks pass through the same shared network, producing 16-dimensional embeddings. Contrastive loss pulls mixable pairs close together in embedding space and pushes non-mixable pairs apart. We trained for up to 100 epochs with early stopping (patience 5) to prevent overfitting on our small dataset. We chose a Siamese architecture because the task involves comparing pairs of inputs: passing both tracks through the same shared network ensures the comparison is symmetric and prevents the model from learning different rules for each track. We wanted to validate whether there were hidden nonlinear structures in the acoustic features that linear or tree-based models could not capture.
-\end{itemize}
+\noindent\textbf{(1) Random Forest, default.} 100 trees, no maximum depth, default sklearn settings. This serves as our baseline. We chose Random Forest over logistic regression or other generalized linear models because we wanted to maintain a human in the loop and prioritize feature interpretability — Random Forest exposes per-feature importance, while linear models capture only linear relationships.
+
+\noindent\textbf{(2) Random Forest, tuned.} 500 trees, maximum depth 20, minimum 5 samples per split. We added regularization through capped tree depth to prevent overfitting, since the default model showed perfect train accuracy. We selected this hyperparameter combination through a grid search over discrete values, choosing the configuration that yielded the highest test accuracy.
+
+\noindent\textbf{(3) Gradient Boosting.} 100 trees built sequentially with learning rate 0.1 and maximum depth 3. We chose another tree-based model to preserve interpretability, but with a different ensemble strategy: each new tree corrects errors from the previous trees, which often outperforms parallel ensembles like Random Forest on tabular data.
+
+\noindent\textbf{(4) LightGBM.} 200 trees, learning rate 0.1, 31 leaves per tree. A faster gradient boosting variant that uses histogram-based split finding rather than the exact split-finding used in standard gradient boosting. We chose LightGBM because it typically outperforms standard gradient boosting on tabular data while training significantly faster — useful for hyperparameter exploration on our limited compute budget.
+
+\noindent\textbf{(5) PCA + Random Forest.} We first reduced the per-track feature space to 10 principal components, then trained a Random Forest on the reduced representation. The harmonic BPM distance was added as a separate feature after PCA. We applied this approach to test whether the high dimensionality of our feature set was contributing noise rather than signal. PCA is restricted to linear combinations of the original features, so it captures redundancy in the linear structure of the data.
+
+\noindent\textbf{(6) Siamese Contrastive Network.} A 3-layer fully-connected tower (input $\to$ 64 $\to$ 32 $\to$ 16) with dropout 0.5, trained with contrastive loss (margin 1.0). Both tracks pass through the same shared network, producing 16-dimensional embeddings. Contrastive loss pulls mixable pairs close together in embedding space and pushes non-mixable pairs apart. We trained for up to 100 epochs with early stopping (patience 5) to prevent overfitting on our small dataset. We chose a Siamese architecture because the task involves comparing pairs of inputs: passing both tracks through the same shared network ensures the comparison is symmetric and prevents the model from learning different rules for each track. We wanted to validate whether there were hidden nonlinear structures in the acoustic features that linear or tree-based models could not capture.
 
 For tree-based models, we report feature importance using sklearn's \texttt{feature\_importances\_} attribute. For PCA + Random Forest, we additionally report which original features contribute most to each principal component, allowing interpretation of the latent dimensions. The Siamese network learns embeddings end-to-end and does not directly expose per-feature importance. All models use a fixed random seed (42) to ensure reproducibility.
 
 
-\textbf{This section should describe your solution in detail. Clearly explain how your method works, including any models, algorithms, or design choices. Highlight how your solution is that different from others' solutions.}
+\section{Results and Model Evaluation}
 
-
-\section{Experiments}
-
+We evaluate the trained models along three axes: which input features actually drive the predictions, how well the recommender retrieves the real next track from a held-out test corpus, and how a panel of human raters scores the model's top-5 recommendations across genres. Together these tell a complementary story, the feature-level view explains \emph{what} the model relies on, the retrieval view measures \emph{how often} it lands on the right track, and the human view captures \emph{whether} the recommendations feel mixable in practice.
 
 \begin{figure}[H]
   \centering
-  \begin{minipage}[c]{0.40\linewidth}
+  \includegraphics[width=0.78\linewidth]{figures/feature_importance_gbm.png}
+  \caption{Gradient Boosting feature importance, top 10 base features per regime (per-feature contributions from the $A$, $B$, and $|A - B|$ panels are summed). Under random negatives the harmonic BPM distance dominates at $29.5\%$. Under hard negatives ($\pm 5$ BPM) it collapses to $2.7\%$ (rank 5) and Tempo takes the top spot; the model is forced to lean on tempogram and MFCC features instead.}
+  \label{fig:feature-importance}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \begin{minipage}[c]{0.46\linewidth}
     \centering
     \includegraphics[width=\linewidth]{figures/hit_at_k_curve.png}
   \end{minipage}%
   \hfill
-  \begin{minipage}[c]{0.56\linewidth}
-    \caption{Retrieval performance on the held-out test corpus. For each of the 741 (query, true-next-track) test pairs, we score the query against all 1042 test-corpus candidates with the gradient-boosting pair classifier, mask the query itself, and rank by posterior. Hit@$k$ is the share of pairs for which the true next-track lands in the top $k$ of that ranking. The dashed line is the random-pick baseline $k / 1042$, the chance that a uniformly random ranker places the truth in its top $k$, with the shaded band showing its 95\% Wald CI under run-to-run variability at $n = 741$. The model curve sits $5.7\times$ to $9.8\times$ above chance across $k \in [1, 50]$, with the largest relative lift at small $k$.}
+  \begin{minipage}[c]{0.50\linewidth}
+    \caption{Hit@$k$ on the held-out test corpus: share of $n = 741$ (query, true-next-track) pairs whose truth lands in the top $k$ when the gradient-boosting model ranks all 1042 test-corpus candidates by posterior. Dashed line is the random-pick baseline $k / 1042$ with shaded 95\% Wald CI. The model sits $5.7\times$ to $9.8\times$ above chance across $k \in [1, 50]$, with the largest relative lift at small $k$.}
     \label{fig:hit-at-k}
   \end{minipage}
 \end{figure}
 
-\begin{figure}[h]
-  \centering
-  \begin{minipage}[c]{0.55\linewidth}
-    \centering
-    \includegraphics[width=\linewidth]{figures/feature_importance_gbm.png}
-  \end{minipage}%
-  \hfill
-  \begin{minipage}[c]{0.42\linewidth}
-    \caption{\hl{[Caption TBD]}}
-    \label{fig:feature-importance}
-  \end{minipage}
-\end{figure}
-
-Moreover, in order to have a human evaluation, a survey was sent out consisting of five queries each one ranking the five most mixable songs. Users gave scores from $0$ to $5$, $0$ indicating no compatibility and $5$ indicating perfect mixability. The survey was completed by $35$ people, $20\%$ of whom are professional DJs, and some of whom are from the SoundCloud team. The five queries in the survey were all very different to each others, as can be seen from \Cref{genre}, in order to evaluate the results of our model across multiple genres. 
+Moreover, in order to have a human evaluation, a survey was sent out consisting of five queries each one ranking the five most mixable songs. Users gave scores from $0$ to $5$, $0$ indicating no compatibility and $5$ indicating perfect mixability. The survey was completed by $35$ people, $20\%$ of whom are professional DJs, and some of whom are from the SoundCloud team. The five queries in the survey span distinct genres (see \Cref{ScoreHV}) so we could evaluate the model across multiple styles.
 
 
 \begin{figure}[H]
   \centering
-  \begin{minipage}[t]{0.66\linewidth}
+  \begin{minipage}[c]{0.62\linewidth}
     \centering
-    \vspace{0pt}
     \includegraphics[width=\linewidth]{figures/query_rank_rating.png}
-    \caption{Per-query, per-rank mean survey rating on the original 0--5 scale averaged across raters. Right-hand strip is the per-query mean across ranks; bottom strip is the per-rank mean across queries. Overall mean across all cells is $3.39$ ($67.84\%$ satisfaction). The Rank-5 cell for \textit{No Distance} was not collected.}
-    \label{ScoreHV}
   \end{minipage}%
   \hfill
-  \begin{minipage}[t]{0.31\linewidth}
-    \vspace{0pt}
-    \footnotesize
-    \raggedright
-    \textit{Elsa - Johann Stone}\\
-    \hspace*{1em}\textcolor{gray}{Progressive Trance}\\[3pt]
-    \textit{Twelve - Psyk Rework}\\
-    \hspace*{1em}\textcolor{gray}{Tech House}\\[3pt]
-    \textit{Peace Keeper - Moving Fusion}\\
-    \hspace*{1em}\textcolor{gray}{Drum \& Bass}\\[3pt]
-    \textit{No Distance - Dixon, Guy Gerber}\\
-    \hspace*{1em}\textcolor{gray}{Progressive House}\\[3pt]
-    \textit{Music Sounds Better With You - Stardust}\\
-    \hspace*{1em}\textcolor{gray}{Funky House}
-    \captionof{table}{The five survey query tracks and their genres.}
-    \label{genre}
+  \begin{minipage}[c]{0.36\linewidth}
+    \caption{Per-query, per-rank mean survey rating on the original 0--5 scale averaged across raters. Each row is one of the five survey query tracks (genre in italics); the rightmost column is each track's mean across ranks and the bottom row is each rank's mean across tracks. Overall mean across all cells is $3.40$ ($67.84\%$ satisfaction). The Rank-5 cell for \textit{No Distance} was not collected.}
+    \label{ScoreHV}
   \end{minipage}
 \end{figure}
 
 
 
-Results from the survey show an overall satisfaction of the model of $67.84\%$. As it can be seen in \Cref{ScoreHV}, the song which received the highest score is \textit{Twelve - Psyk Rework}, which is coherent as from \Cref{genre} we can see that its genre is Tech House and the dataset used to train the model is mainly Tech House dominated. On the other hand, the song with the lowest score is \textit{Music Sounds Better With You - Stardust} which is a Funky House song and our dataset did not have any Funky House, therefore the prediction is less accurate. The remaining three songs in \Cref{ScoreHV} have somewhat similar scores oscillating between $3.26$ and $3.56$ on the 0--5 scale, as in fact, their genres represent in between $6.9\%$ and $18.7\%$ of the dataset. It can be notice that the score of a song increases as the percentage of its genre in the dataset increases, which is expected as it means the model will find more similar songs to the query. 
+Results from the survey show an overall satisfaction of the model of $67.84\%$. As shown in \Cref{ScoreHV}, the song which received the highest score is \textit{Twelve - Psyk Rework} (Tech House), coherent with the fact that the training dataset is mainly Tech House dominated. The song with the lowest score is \textit{Music Sounds Better With You - Stardust} (Funky House), a genre absent from our training data, so the prediction is less accurate. The remaining three songs have similar scores between $3.26$ and $3.56$ on the 0--5 scale; their genres represent between $6.9\%$ and $18.7\%$ of the dataset. The score of a song increases with the share of its genre in the dataset, which is expected: the more similar songs the model has seen, the better its recommendations. 
 
 
-
-
-\textbf{This section should describe how you evaluate your method. Specify datasets, baselines, and evaluation metrics. Clearly describe which experiments you run. For each experiment, state what you expect to observe and justify why your method should perform better than existing approaches. Present results clearly and interpret them.}
 
 
 \section{Discussion}
 
-\hl{[...]}
+The dataset used to train the model is mainly Tech House dominated, explaining why Funky House songs received worst scores than other tracks. This genre bias could be reduced if the dataset covered more songs and genres.
 
-The dataset used to train the model is mainly Tech House dominated, explaining why Funky House songs received worst scores than other tracks. This genre bias could be reduced if the dataset covered more songs and genres. 
+Moreover, a future investigation could be carried out to impose the directionality of the mixes: song $A$ mixes with song $B$, if they are consecutive in the table, but the opposite is not verified. This allows the model to take into count the intro/outro structure of the songs, which at the moment is ignored given the way the positive pairs are defined.
 
-Moreover, a future investigation could be carried out to impose the directionality of the mixes: song $A$ mixes with song $B$, if they are consecutive in the table, but the opposite is not verified. This allows the model to take into count the intro/outro structure of the songs, which at the moment is ignored given the way the positive pairs are defined.  
+Another consideration made for future work was finding more realistic hard negative pairs without introducing bias, which could elevate the accuracy of the model.
 
-Another consideration made for future work was finding more realistic hard negative pairs without introducing bias, which could elevate the accuracy of the model. 
-
- 
-
-
-
-
-
-\textbf{This section should summarize your findings and reflect on their implications. Discuss limitations of your approach and possible reasons for unexpected results. Suggest directions for future work.}
-
-
+\clearpage
 \bibliographystyle{abbrvnat}
 \setcitestyle{numbers}
 \bibliography{references}
