@@ -24,12 +24,25 @@ from pathlib import Path
 
 import matplotlib
 matplotlib.use("Agg")  # headless WSL has no display
+import matplotlib.font_manager as fm
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-plt.rcParams["font.family"] = ["Helvetica", "Arial", "Nimbus Sans", "sans-serif"]
+
+def _pick_sans_font():
+    available = {f.name for f in fm.fontManager.ttflist}
+    for candidate in ("Helvetica", "Helvetica Neue", "Nimbus Sans",
+                      "Liberation Sans", "Arial", "DejaVu Sans"):
+        if candidate in available:
+            return candidate
+    return "sans-serif"
+
+
+plt.rcParams["font.family"] = _pick_sans_font()
+plt.rcParams["pdf.fonttype"] = 42
+plt.rcParams["ps.fonttype"] = 42
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -201,7 +214,9 @@ def plot_bubbles_stacked(top10, top10_pct, out_path):
     centers_y = radii  # so bottom of each circle sits on y=0
     total_w = centers_x[-1] + radii[-1]
 
-    fig, ax = plt.subplots(figsize=(9.5, 5.5))
+    # Smaller native figsize so LaTeX scales it less when the minipage
+    # collapses to ~0.42 \linewidth, otherwise font sizes get clobbered.
+    fig, ax = plt.subplots(figsize=(7.2, 4.2))
 
     # Faint baseline anchors the visual bottom edge of all circles.
     ax.plot([-0.2, total_w + 0.2], [0, 0],
@@ -211,10 +226,12 @@ def plot_bubbles_stacked(top10, top10_pct, out_path):
     # radius is big enough to fit the longest wrapped line at a readable
     # fontsize. Long names (Progressive...) need a bigger circle than short
     # ones (House) to label themselves.
+    # Inside if the circle's radius can hold the longest wrapped word at
+    # the smallest readable font we're willing to use.
     inside_idx, callout_idx = [], []
     for i, (r, name) in enumerate(zip(radii, names)):
         longest = max(wrap_label(name).split('\n'), key=len)
-        threshold = max(0.40, len(longest) * 0.07)
+        threshold = max(0.45, len(longest) * 0.072)
         (inside_idx if r >= threshold else callout_idx).append(i)
 
     for i in range(n):
@@ -224,14 +241,13 @@ def plot_bubbles_stacked(top10, top10_pct, out_path):
             edgecolor='white', linewidth=1.0, zorder=2,
         ))
 
+    # Per-circle font scales so the longest wrapped word fits inside,
+    # capped at 14pt for the largest circle. Coefficient 13 here is the
+    # inverse of the threshold's 0.072 (with a small buffer).
     for i in inside_idx:
         cx, cy, r = centers_x[i], centers_y[i], radii[i]
-        if r >= 0.7:
-            fs = 11
-        elif r >= 0.55:
-            fs = 9.5
-        else:
-            fs = 8.5
+        longest = max(wrap_label(names[i]).split('\n'), key=len)
+        fs = min(14.0, max(9.5, r / max(len(longest), 4) * 13.0))
         ax.text(cx, cy, f"{wrap_label(names[i])}\n{pcts[i]:.1f}%",
                 ha='center', va='center',
                 fontsize=fs, fontweight='bold',
@@ -241,18 +257,23 @@ def plot_bubbles_stacked(top10, top10_pct, out_path):
     # x-range than the tail's footprint so they get breathing room; thin
     # leader lines connect each circle to its callout.
     if callout_idx:
+        # Spread callouts over a wider range so the bigger label font
+        # ("Progressive Trance" is the longest) doesn't crash into its
+        # neighbor. We push the starting x further left and let the strip
+        # extend slightly past the rightmost circle.
         first = callout_idx[0]
-        callout_x_start = max(0.5, centers_x[first] - 3.2)
-        callout_x_end = total_w + 0.1
+        callout_x_start = max(0.0, centers_x[first] - 4.5)
+        callout_x_end = total_w + 0.4
         callout_xs = np.linspace(callout_x_start, callout_x_end, len(callout_idx))
-        callout_y = -0.95
+        callout_y = -1.05
 
         for idx, lx in zip(callout_idx, callout_xs):
             cx_real = centers_x[idx]
             ax.plot([cx_real, lx], [-0.04, callout_y + 0.18],
-                    color='#999999', linewidth=0.5, zorder=1)
+                    color='#999999', linewidth=0.6, zorder=1)
             ax.text(lx, callout_y, f"{names[idx]}\n{pcts[idx]:.1f}%",
-                    ha='center', va='top', fontsize=9, color='black')
+                    ha='center', va='top', fontsize=12, color='black',
+                    linespacing=1.15)
 
     ax.set_xlim(-0.30, total_w + 0.30)
     ax.set_ylim(-1.65, 2 * r_max + 0.15)

@@ -17,6 +17,7 @@ import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
 import numpy as np
 import pandas as pd
 
@@ -36,7 +37,24 @@ from train_all_models import (  # noqa: E402
 figures_dir = REPO_ROOT / "paper" / "figures"
 figures_dir.mkdir(parents=True, exist_ok=True)
 
-plt.rcParams["font.family"] = ["Helvetica", "Arial", "Nimbus Sans", "sans-serif"]
+
+def pick_sans_font():
+    """Prefer Helvetica if it's installed; fall back to Nimbus Sans, the
+    URW metric-identical Helvetica clone shipped with most Linux fontconfig
+    distributions. Returning the first font matplotlib can actually render
+    avoids the wall of 'font not found' warnings."""
+    available = {f.name for f in fm.fontManager.ttflist}
+    for candidate in ("Helvetica", "Helvetica Neue", "Nimbus Sans",
+                      "Liberation Sans", "Arial", "DejaVu Sans"):
+        if candidate in available:
+            return candidate
+    return "sans-serif"
+
+
+SANS_FONT = pick_sans_font()
+plt.rcParams["font.family"] = SANS_FONT
+plt.rcParams["pdf.fonttype"] = 42
+plt.rcParams["ps.fonttype"] = 42
 
 POS_COLOR = "#2E86AB"
 RAND_NEG_COLOR = "#E07A3F"
@@ -51,51 +69,79 @@ def harmonic_distances(pairs, tempo_by_track):
 
 
 def plot_grouped_bars(pos_dist, rand_dist, hard_dist, out_path):
-    """Three-bar comparison: positives, random negatives, hard negatives.
-    The positives bar is identical across regimes so it only needs to appear
-    once. Mean and median annotated above each bar."""
+    """Grouped bars: each category (positives, random negs, hard negs) gets
+    a mean bar and a median bar side by side. Same color per category, mean
+    rendered solid and median rendered lighter so the eye reads them as a
+    pair. This avoids the earlier version's issue of bar-height = mean and
+    label = both, which conflates two statistics into one visual encoding."""
+    import matplotlib.patches as mpatches
 
-    pos_mean, pos_med = pos_dist.mean(), float(np.median(pos_dist))
-    rand_mean, rand_med = rand_dist.mean(), float(np.median(rand_dist))
-    hard_mean, hard_med = hard_dist.mean(), float(np.median(hard_dist))
-
-    largest_mean = max(pos_mean, rand_mean, hard_mean)
-    y_max = largest_mean * 1.45
-
-    fig, ax = plt.subplots(figsize=(5, 3.8))
-
-    xs = [1, 2, 3]
-    means = [pos_mean, rand_mean, hard_mean]
-    medians = [pos_med, rand_med, hard_med]
+    means = np.array([pos_dist.mean(), rand_dist.mean(), hard_dist.mean()])
+    medians = np.array([
+        float(np.median(pos_dist)),
+        float(np.median(rand_dist)),
+        float(np.median(hard_dist)),
+    ])
     colors = [POS_COLOR, RAND_NEG_COLOR, HARD_NEG_COLOR]
     labels = ["Positives", "Random\nnegatives", "Hard\nnegatives"]
 
-    ax.bar(xs, means, width=0.6, color=colors,
-           edgecolor="#333", linewidth=1.0, alpha=0.85)
+    y_max = float(max(means.max(), medians.max())) * 1.30
 
-    label_offset = y_max * 0.025
-    for x, mean, median, color in zip(xs, means, medians, colors):
-        ax.text(x, mean + label_offset,
-                f"mean {mean:.2f}\nmed {median:.2f}",
-                ha="center", va="bottom", fontsize=9, color="black",
-                bbox=dict(boxstyle="round,pad=0.25", facecolor="white",
-                          edgecolor=color, linewidth=1.0))
+    # Small native figsize, the figure renders at ~32% of \linewidth in
+    # the paper so a small source size means LaTeX downscales less and
+    # everything stays legible. Fonts are sized assuming this aspect.
+    fig, ax = plt.subplots(figsize=(3.8, 2.8))
 
-    ax.set_xticks(xs)
-    ax.set_xticklabels(labels, fontsize=10)
-    ax.set_ylabel("Mean harmonic BPM distance\n(lower = closer tempo match)",
-                  fontsize=10)
+    group_centers = np.arange(3) * 1.4
+    bar_w = 0.5
+    mean_xs = group_centers - bar_w / 2 - 0.02
+    med_xs = group_centers + bar_w / 2 + 0.02
+
+    for x, h, c in zip(mean_xs, means, colors):
+        ax.bar(x, h, width=bar_w, color=c, alpha=0.95,
+               edgecolor="#333", linewidth=0.6)
+    for x, h, c in zip(med_xs, medians, colors):
+        ax.bar(x, h, width=bar_w, color=c, alpha=0.5,
+               edgecolor="#333", linewidth=0.6)
+
+    label_offset = y_max * 0.022
+    for x, h in zip(mean_xs, means):
+        ax.text(x, h + label_offset, f"{h:.2f}",
+                ha="center", va="bottom", fontsize=12, color="#222",
+                fontweight="medium")
+    for x, h in zip(med_xs, medians):
+        ax.text(x, h + label_offset, f"{h:.2f}",
+                ha="center", va="bottom", fontsize=12, color="#222",
+                fontweight="medium")
+
+    ax.set_xticks(group_centers)
+    ax.set_xticklabels(["Positives", "Random\nneg.", "Hard\nneg."],
+                       fontsize=13)
+    ax.set_ylabel("Harmonic BPM distance", fontsize=13)
     ax.set_ylim(0, y_max)
-    ax.set_xlim(0.4, 3.6)
-    ax.yaxis.grid(True, linestyle=":", alpha=0.5)
+    ax.set_xlim(group_centers[0] - 0.85, group_centers[-1] + 0.85)
+    ax.tick_params(axis="y", labelsize=11)
+    ax.yaxis.grid(True, linestyle="-", linewidth=0.5, color="#e6e6e6")
     ax.set_axisbelow(True)
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
+    for spine in ("top", "right"):
+        ax.spines[spine].set_visible(False)
+    for spine in ("left", "bottom"):
+        ax.spines[spine].set_color("#999")
+        ax.spines[spine].set_linewidth(0.8)
+
+    # Legend in neutral gray so the per-category colors don't compete.
+    mean_patch = mpatches.Patch(facecolor="#555", alpha=0.95,
+                                edgecolor="#333", linewidth=0.6, label="Mean")
+    med_patch = mpatches.Patch(facecolor="#555", alpha=0.5,
+                               edgecolor="#333", linewidth=0.6, label="Median")
+    ax.legend(handles=[mean_patch, med_patch], frameon=False,
+              loc="upper right", fontsize=12, handlelength=1.3,
+              borderpad=0.15, labelspacing=0.3)
 
     plt.tight_layout()
-    plt.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.savefig(out_path, dpi=180, bbox_inches="tight", facecolor="white")
     plt.close(fig)
-    print(f"wrote {out_path.relative_to(REPO_ROOT)}")
+    print(f"wrote {out_path.relative_to(REPO_ROOT)}  (font: {SANS_FONT})")
 
 
 def main():
