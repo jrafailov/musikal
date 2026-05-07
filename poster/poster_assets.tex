@@ -177,14 +177,12 @@
     harmonic BPM\\[2pt]
     {\footnotesize engineered feature}};
   \node[pipestage, right=of s3] (s4) {%
-    Gradient Boosting\\
-    trained on\\
-    $+$ and $-$ pairs};
+    Gradient Boosting\\[2pt]
+    {\footnotesize posterior probability of a good mix with query $v_a$}};
   \node[pipestage, right=of s4] (s5) {%
     inference:\\
-    score query vs.\\
-    all candidates,\\
-    return top 5};
+    rank the corpus\\
+    by mixability};
 
   \draw[flow] (s1) -- (s2);
   \draw[flow] (s2) -- (s3);
@@ -208,19 +206,16 @@
   \node[below=0.2cm of lib, font=\large\bfseries, align=center]
     {N candidate tracks};
 
-  \node[block, right=2.5cm of lib, minimum width=4.0cm, text width=3.8cm] (mlp) {%
-    Gradient\\ Boosting\\ score};
+  \node[block, right=2.5cm of lib, minimum width=5.2cm, text width=5.0cm] (mlp) {%
+    Gradient Boosting\\[2pt]
+    {\footnotesize posterior probability of a good mix with query $v_a$}};
 
   \node[draw, very thick, rounded corners, fill=gray!5,
-        right=2.5cm of mlp, font=\large, align=left,
-        minimum width=3.6cm, minimum height=4.5cm,
-        text width=3.2cm] (top5) {%
-    \textbf{Top 5}\\[6pt]
-    1.\\
-    2.\\
-    3.\\
-    4.\\
-    5.};
+        right=2.5cm of mlp, font=\large, align=center,
+        minimum width=5.6cm, minimum height=4.5cm,
+        text width=5.2cm] (top5) {%
+    \textbf{corpus ranked}\\
+    \textbf{by mixability}};
 
   \draw[flow] (q) -- (lib);
   \draw[flow] (lib) -- (mlp);
@@ -292,6 +287,108 @@
     1{,}502 held-out pairs from the 20\% of mixes never seen during training\\[4pt]
     pair classification: \textbf{77.0\%} accuracy \quad\textbar\quad retrieval: \textbf{Hit@5 = 1.47\%}\\
     {\footnotesize (747 queries scored against all 3{,}827 candidate tracks; MRR = 0.014)}};
+\end{tikzpicture}
+
+% ============================================================
+% ASSET 7 — Unified training / testing / inference paradigm
+% Three stacked panels showing the same classifier used at three
+% stages. The output is always the posterior probability that
+% two tracks form a good mix; classifier choice is generic
+% (gradient boosting in our experiments, but the figure is
+% classifier-agnostic).
+% ============================================================
+\begin{tikzpicture}
+  % ===== Training panel =====
+  \fill[posterbg, rounded corners=10pt] (-0.5, -7.0) rectangle (22, 1.0);
+  \draw[very thick, rounded corners=10pt] (-0.5, -7.0) rectangle (22, 1.0);
+
+  \node[font=\LARGE\bfseries, anchor=north west] at (-0.1, 0.7) {Training};
+
+  \node[font=\Huge] (un_tr_a) at (2.0, -3.0) {\eighthnote};
+  \node[right=0pt of un_tr_a, font=\Large] {$v_a$};
+  \node[font=\Huge] (un_tr_b) at (5.4, -3.0) {\eighthnote};
+  \node[right=0pt of un_tr_b, font=\Large] {$v_b$};
+
+  \draw[flow] (6.9, -3.0) -- (8.4, -3.0);
+
+  \node[draw, very thick, rounded corners, fill=white,
+        minimum width=4.6cm, minimum height=2.4cm, text width=4.4cm,
+        font=\large, align=center] (un_trm) at (10.8, -3.0) {classifier};
+
+  \draw[flow] (un_trm.east) -- (16.6, -3.0);
+
+  \node[font=\large, align=center] at (19.0, -3.0) {%
+    posterior\\
+    $p(\text{mix} \mid v_a, v_b)$};
+
+  \node[font=\large, align=center] (un_lbl) at (10.8, -0.5) {label $\in \{0, 1\}$};
+  \draw[flow] (un_lbl.south) -- (un_trm.north);
+
+  \node[font=\normalsize, align=center, text width=22cm] at (10.75, -6.0) {%
+    fit log-loss against pair labels\\
+    positives = real DJ transitions \quad\textbar\quad negatives = random non-adjacent tracks};
+
+  % ===== Testing panel =====
+  \fill[posterbg, rounded corners=10pt] (-0.5, -15.5) rectangle (22, -7.7);
+  \draw[very thick, rounded corners=10pt] (-0.5, -15.5) rectangle (22, -7.7);
+
+  \node[font=\LARGE\bfseries, anchor=north west] at (-0.1, -8.0) {Testing};
+
+  \node[font=\Huge] (un_te_a) at (2.0, -10.7) {\eighthnote};
+  \node[right=0pt of un_te_a, font=\Large] {$v_a$};
+  \node[font=\Huge] (un_te_b) at (5.4, -10.7) {\eighthnote};
+  \node[right=0pt of un_te_b, font=\Large] {$v_b$};
+
+  \draw[flow] (6.9, -10.7) -- (8.4, -10.7);
+
+  \node[draw, very thick, rounded corners, fill=white,
+        minimum width=4.6cm, minimum height=2.4cm, text width=4.4cm,
+        font=\large, align=center] (un_tem) at (10.8, -10.7) {classifier};
+  \node[font=\footnotesize, below=2pt of un_tem] {(frozen)};
+
+  \draw[flow] (un_tem.east) -- (16.6, -10.7);
+
+  \node[font=\large, align=center] at (19.0, -10.7) {%
+    posterior\\
+    $p(\text{mix} \mid v_a, v_b)$};
+
+  \node[font=\normalsize, align=center, text width=22cm] at (10.75, -14.2) {%
+    held-out pairs from mixes never seen during training};
+
+  % ===== Inference panel =====
+  \fill[posterbg, rounded corners=10pt] (-0.5, -24.0) rectangle (22, -16.2);
+  \draw[very thick, rounded corners=10pt] (-0.5, -24.0) rectangle (22, -16.2);
+
+  \node[font=\LARGE\bfseries, anchor=north west] at (-0.1, -16.5) {Inference};
+
+  \node[font=\Huge] (un_q) at (2.0, -19.5) {\eighthnote};
+  \node[right=0pt of un_q, font=\Large] {query};
+
+  \node[draw, very thick, rounded corners, fill=white,
+        minimum width=1.8cm, minimum height=2.6cm] (un_corp) at (5.7, -19.5) {};
+  \foreach \yy in {-1.0,-0.5,0.5,1.0} {
+    \draw ([yshift=\yy cm] un_corp.west) -- ([yshift=\yy cm] un_corp.east);
+  }
+  \node[font=\Large] at (un_corp) {$\vdots$};
+  \node[below=0.1cm of un_corp, font=\small\bfseries, align=center] {corpus};
+
+  \draw[flow] (un_corp.east) -- (8.4, -19.5);
+
+  \node[draw, very thick, rounded corners, fill=white,
+        minimum width=4.6cm, minimum height=2.4cm, text width=4.4cm,
+        font=\large, align=center] (un_im) at (10.8, -19.5) {classifier};
+  \node[font=\footnotesize, below=2pt of un_im] {(frozen)};
+
+  \draw[flow] (un_im.east) -- (16.4, -19.5);
+
+  \node[draw, very thick, rounded corners, fill=white,
+        minimum width=5.4cm, minimum height=3.0cm, text width=5.0cm,
+        font=\large, align=center] (un_rank) at (19.1, -19.5) {%
+    \textbf{corpus ranked}\\
+    \textbf{by mixability}};
+
+  \node[font=\normalsize, align=center, text width=22cm] at (10.75, -22.7) {%
+    score the query against every candidate, then sort by posterior};
 \end{tikzpicture}
 
 \end{document}

@@ -66,6 +66,7 @@
 \usepackage{microtype}      % microtypography
 \usepackage{xcolor}         % colors
 \usepackage{graphicx}
+\usepackage{wrapfig}
 \usepackage{cleveref}
 
 % Note. For the workshop paper template, both \title{} and \workshoptitle{} are required, with the former indicating the paper title shown in the title and the latter indicating the workshop title displayed in the footnote. 
@@ -127,7 +128,14 @@ We use the open \emph{mir-aidj djmix-dataset} \citep{mir_aidj_djmix} as our sour
 
 \paragraph{Considerations during selection.} Two tradeoffs drove the choices above. We preferred the djmix-dataset over scraping 1001Tracklists or building our own corpus because it is openly redistributable as metadata and the audio acquisition layer is intentionally separated from the tracklist information. Second, every cleaning step was set up so that it could only \emph{remove} rows: we drop tracks rather than impute features, drop pairs rather than bridge missing tracks, and drop unmatched titles rather than match them. The resulting positives are conservative but each one corresponds to a transition a human DJ had actually played.
 
-\paragraph{Final dataset.} Of the 64{,}753 raw transitions, 3{,}724 had both endpoint tracks present in the audio features table; after dropping self-loops we retained 3{,}721 positive pairs spanning 1{,}605 distinct mixes. We sample negative pairs at a 1:1 ratio, giving a total of 7{,}442 labelled pairs. We split at the mix level, holding out 20\% of contributing mixes for testing so that no mix appeared in both partitions. The resulting partition contained 5{,}940 training pairs and 1{,}502 test pairs.
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.55\linewidth]{figures/genre_distribution_stacked.png}
+    \caption{Genre mix of the 3{,}827 tracks in the audio features table, derived from MixesDB tags propagated through the mixes each track appears in. Each circle is one of the top-10 genres; circle area is proportional to track count.}
+    \label{fig:corpus-genres}
+\end{figure}
+
+\paragraph{Final dataset.} Of the 64{,}753 raw transitions, 3{,}724 had both endpoint tracks present in the audio features table; after dropping self-loops we retained 3{,}721 positive pairs spanning 1{,}605 distinct mixes. We sample negative pairs at a 1:1 ratio, giving a total of 7{,}442 labelled pairs. We split at the mix level, holding out 20\% of contributing mixes for testing so that no mix appeared in both partitions. The resulting partition contained 5{,}940 training pairs and 1{,}502 test pairs. The corpus skews heavily toward Tech House and Progressive House (\Cref{fig:corpus-genres}), which becomes a relevant detail when interpreting per-genre survey scores later on.
 
 
 
@@ -157,24 +165,19 @@ Negative pairs require a sampling strategy, since not all non-transitions are eq
 \item \textbf{Hard negatives}: For each positive anchor track, we sample a candidate within $\pm 5$ BPM that is not a known transition. This forces the model to learn distinctions beyond simple BPM matching.
 \end{itemize}
 
-To assess the compatibility of each negative sampling strategy with our engineered harmonic BPM distance feature, we computed the mean and median harmonic distance across positive and negative pairs under each strategy. The results are shown in Figures~\ref{fig:hbpm-random} and~\ref{fig:hbpm-hard}.
+To assess the compatibility of each negative sampling strategy with our engineered harmonic BPM distance feature, we computed the mean and median harmonic distance across positive and negative pairs under each strategy. The results are shown in \Cref{fig:hbpm-comparison}.
 
 \begin{figure}[h]
     \centering
-    \begin{subfigure}[t]{0.49\linewidth}
+    \begin{minipage}[c]{0.50\linewidth}
         \centering
-        \includegraphics[width=\linewidth]{figures/harmonic_bpm_random.png}
-        \caption{Random negative sampling. Positive pairs have a mean harmonic distance of 4.90 BPM (median 2.45) compared to 11.45 BPM (median 5.81) for random negatives, providing clear separation between the two classes.}
-        \label{fig:hbpm-random}
-    \end{subfigure}
+        \includegraphics[width=\linewidth]{figures/harmonic_bpm_comparison.png}
+    \end{minipage}%
     \hfill
-    \begin{subfigure}[t]{0.49\linewidth}
-        \centering
-        \includegraphics[width=\linewidth]{figures/harmonic_bpm_hard.png}
-        \caption{Hard negative sampling. The relationship inverts: hard negatives have a mean harmonic distance of 1.85 BPM (median 2.72), smaller than the 4.90 BPM mean of positive pairs. Because hard negatives are constrained within $\pm 5$ BPM of a positive anchor, they end up closer in tempo than the positive pairs themselves.}
-        \label{fig:hbpm-hard}
-    \end{subfigure}
-    \label{fig:hbpm-comparison}
+    \begin{minipage}[c]{0.46\linewidth}
+        \caption{Mean harmonic BPM distance for positive pairs (real DJ transitions) and for negatives under each sampling regime. Random negatives sit at 11.45 BPM, well above the 4.90 BPM mean of positives, so harmonic BPM is a strong discriminator. Hard negatives, constrained within $\pm 5$ BPM of a positive anchor, drop to 1.85 BPM, tighter in tempo than the positives themselves. The cue therefore disappears under hard sampling, forcing the model to rely on non-tempo features.}
+        \label{fig:hbpm-comparison}
+    \end{minipage}
 \end{figure}
 
 Under random negative sampling, the harmonic BPM distance feature carries strong discriminative signal: positive pairs have substantially lower harmonic distance than negatives. Under hard negative sampling, this relationship inverts, with negatives showing a smaller mean harmonic distance than positives. This is a direct consequence of the hard sampling constraint, which by construction selects negatives that are BPM-similar to a positive anchor. Because harmonic BPM distance is a feature we engineered specifically to capture the tempo compatibility that DJs rely on when choosing tracks, we chose random negative sampling for our primary pipeline. Hard negatives remain valuable as a stricter evaluation strategy that removes the easy BPM cue, and we report results under both strategies in Section 4 to provide a complete picture of model performance.
@@ -205,6 +208,14 @@ For tree-based models, we report feature importance using sklearn's \texttt{feat
 
 \section{Experiments}
 \hl{[...]}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.7\linewidth]{figures/feature_importance_gbm.png}
+    \caption{\hl{[Caption TBD]}}
+    \label{fig:feature-importance}
+\end{figure}
+
 Moreover, in order to have a human evaluation, a survey was sent out consisting of five queries each one ranking the five most mixable songs. Users gave scores from $0$ to $5$, $0$ indicating no compatibility and $5$ indicating perfect mixability. The survey was completed by $35$ people, $20\%$ of whom are professional DJs, and some of whom are from the SoundCloud team. The five queries in the survey were all very different to each others, as can be seen from \Cref{genre}, in order to evaluate the results of our model across multiple genres. 
 
 

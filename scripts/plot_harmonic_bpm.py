@@ -1,14 +1,13 @@
 """
-Plot harmonic BPM distance distributions for positive vs negative pairs,
-under both random and hard negative sampling regimes. Replaces the text-dump
-PNGs that earlier showed train_all_models.py's printed output.
+Plot mean harmonic BPM distance for positive vs negative pairs under both
+random and hard negative sampling regimes. Single grouped bar chart with
+two regimes side-by-side so the random→hard contrast is visible at a glance.
 
 Reuses the data-loading + sampling helpers from train_all_models.py so the
-distributions match exactly what the trained models actually saw.
+numbers match exactly what the trained models actually saw.
 
-Outputs
-    paper/figures/harmonic_bpm_random.png
-    paper/figures/harmonic_bpm_hard.png
+Output
+    paper/figures/harmonic_bpm_comparison.png
 
 Usage
     python scripts/plot_harmonic_bpm.py
@@ -40,7 +39,8 @@ figures_dir.mkdir(parents=True, exist_ok=True)
 plt.rcParams["font.family"] = ["Helvetica", "Arial", "Nimbus Sans", "sans-serif"]
 
 POS_COLOR = "#2E86AB"
-NEG_COLOR = "#E07A3F"
+RAND_NEG_COLOR = "#E07A3F"
+HARD_NEG_COLOR = "#A14B2A"
 
 
 def harmonic_distances(pairs, tempo_by_track):
@@ -50,56 +50,43 @@ def harmonic_distances(pairs, tempo_by_track):
     return out
 
 
-def plot_distributions(pos_dist, neg_dist, neg_label, out_path, y_max):
-    """Violin plot of harmonic BPM distance for positives vs negatives. Each
-    violin shows the full density shape; mean (diamond) and median (line)
-    are overlaid. Y-axis range is shared across regimes so the random and
-    hard plots can be compared directly."""
+def plot_grouped_bars(pos_dist, rand_dist, hard_dist, out_path):
+    """Three-bar comparison: positives, random negatives, hard negatives.
+    The positives bar is identical across regimes so it only needs to appear
+    once. Mean and median annotated above each bar."""
 
-    pos_mean, neg_mean = pos_dist.mean(), neg_dist.mean()
-    pos_med, neg_med = float(np.median(pos_dist)), float(np.median(neg_dist))
+    pos_mean, pos_med = pos_dist.mean(), float(np.median(pos_dist))
+    rand_mean, rand_med = rand_dist.mean(), float(np.median(rand_dist))
+    hard_mean, hard_med = hard_dist.mean(), float(np.median(hard_dist))
 
-    fig, ax = plt.subplots(figsize=(6, 4))
+    largest_mean = max(pos_mean, rand_mean, hard_mean)
+    y_max = largest_mean * 1.45
 
-    parts = ax.violinplot(
-        [pos_dist, neg_dist],
-        positions=[1, 2],
-        widths=0.75,
-        showmeans=False,
-        showmedians=False,
-        showextrema=False,
-    )
-    for body, color in zip(parts["bodies"], [POS_COLOR, NEG_COLOR]):
-        body.set_facecolor(color)
-        body.set_edgecolor("#333")
-        body.set_alpha(0.65)
-        body.set_linewidth(1.2)
+    fig, ax = plt.subplots(figsize=(5, 3.8))
 
-    # median as a short horizontal bar inside each violin
-    for x, med in zip([1, 2], [pos_med, neg_med]):
-        ax.hlines(med, x - 0.18, x + 0.18, color="black", linewidth=2.5, zorder=4)
+    xs = [1, 2, 3]
+    means = [pos_mean, rand_mean, hard_mean]
+    medians = [pos_med, rand_med, hard_med]
+    colors = [POS_COLOR, RAND_NEG_COLOR, HARD_NEG_COLOR]
+    labels = ["Positives", "Random\nnegatives", "Hard\nnegatives"]
 
-    # mean as a diamond
-    ax.scatter([1, 2], [pos_mean, neg_mean],
-               marker="D", s=70, color="black", zorder=5)
+    ax.bar(xs, means, width=0.6, color=colors,
+           edgecolor="#333", linewidth=1.0, alpha=0.85)
 
-    # numeric annotations just above each violin
-    annotation_y = y_max * 0.96
-    ax.text(1, annotation_y, f"mean {pos_mean:.2f}\nmedian {pos_med:.2f}",
-            ha="center", va="top", fontsize=10, color="black",
-            bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
-                      edgecolor=POS_COLOR, linewidth=1.2))
-    ax.text(2, annotation_y, f"mean {neg_mean:.2f}\nmedian {neg_med:.2f}",
-            ha="center", va="top", fontsize=10, color="black",
-            bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
-                      edgecolor=NEG_COLOR, linewidth=1.2))
+    label_offset = y_max * 0.025
+    for x, mean, median, color in zip(xs, means, medians, colors):
+        ax.text(x, mean + label_offset,
+                f"mean {mean:.2f}\nmed {median:.2f}",
+                ha="center", va="bottom", fontsize=9, color="black",
+                bbox=dict(boxstyle="round,pad=0.25", facecolor="white",
+                          edgecolor=color, linewidth=1.0))
 
-    ax.set_xticks([1, 2])
-    ax.set_xticklabels([f"Positives\n(n={len(pos_dist)})",
-                        f"{neg_label}\n(n={len(neg_dist)})"], fontsize=11)
-    ax.set_ylabel("Harmonic BPM distance\n(lower = closer tempo match)", fontsize=11)
+    ax.set_xticks(xs)
+    ax.set_xticklabels(labels, fontsize=10)
+    ax.set_ylabel("Mean harmonic BPM distance\n(lower = closer tempo match)",
+                  fontsize=10)
     ax.set_ylim(0, y_max)
-    ax.set_xlim(0.3, 2.7)
+    ax.set_xlim(0.4, 3.6)
     ax.yaxis.grid(True, linestyle=":", alpha=0.5)
     ax.set_axisbelow(True)
     ax.spines["top"].set_visible(False)
@@ -139,20 +126,9 @@ def main():
     hard_dist = harmonic_distances(neg_hard, tempo_by_track)
     print(f"hard neg:   {len(neg_hard)}  mean={hard_dist.mean():.2f}  median={np.median(hard_dist):.2f}")
 
-    # shared y-axis so the two regimes are visually comparable. driven by
-    # the random regime's tail since it's the wider distribution.
-    y_max = float(np.percentile(
-        np.concatenate([pos_dist, rand_dist, hard_dist]), 95,
-    ))
-    print(f"shared y_max (95th pct across all): {y_max:.2f}")
-
-    plot_distributions(
-        pos_dist, rand_dist, "Random negatives",
-        figures_dir / "harmonic_bpm_random.png", y_max,
-    )
-    plot_distributions(
-        pos_dist, hard_dist, "Hard negatives",
-        figures_dir / "harmonic_bpm_hard.png", y_max,
+    plot_grouped_bars(
+        pos_dist, rand_dist, hard_dist,
+        figures_dir / "harmonic_bpm_comparison.png",
     )
 
 
