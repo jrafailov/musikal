@@ -86,11 +86,10 @@ def main():
     rand_lo = np.clip(random_curve - z * rand_se, 0, 1)
     rand_hi = random_curve + z * rand_se
 
-    # Native size targets a ~0.50 linewidth render in the paper
-    # (~3.3 inch wide on NeurIPS body text), so LaTeX downscales by less
-    # and the source font sizes survive into the rendered PDF without
-    # going tiny.
-    fig, ax = plt.subplots(figsize=(3.6, 2.8))
+    # Native size targets a ~0.32 linewidth render in the paper
+    # (~2.1 inch wide on NeurIPS body) when paired with rank_cdf and the
+    # retrieval-summary box in a three-column layout.
+    fig, ax = plt.subplots(figsize=(3.2, 2.2))
 
     # gap fill between random expected and model, drawn first so it sits
     # under everything
@@ -107,14 +106,14 @@ def main():
     ax.fill_between(ks, rand_lo, rand_hi,
                     color=RANDOM_COLOR, alpha=0.25, linewidth=0, zorder=2)
     ax.plot(ks, random_curve, color=RANDOM_COLOR, linewidth=1.8,
-            linestyle="--", label="Chance (95% CI shaded)", zorder=3)
+            linestyle="--", label="Chance", zorder=3)
 
-    # markers + labels only at the headline k values. The curve rises
-    # monotonically so labels sit above-left of each marker, where there's
-    # empty space (the curve has already passed through that x to the left).
-    # The last point (k=50) has no curve to its right, so put it above-right.
+    # markers + labels only at the headline k values. Each marker gets
+    # the hit@k value AND the lift over chance (e.g., "9.8x") so the
+    # reader sees both absolute performance and relative lift.
     for k in HIGHLIGHT_KS:
         y = hit_curve[k - 1]
+        lift = y / random_curve[k - 1] if random_curve[k - 1] > 0 else 0
         ax.scatter([k], [y], color=MODEL_COLOR, s=28,
                    edgecolor="white", linewidth=1.0, zorder=6)
         if k == HIGHLIGHT_KS[-1]:
@@ -122,17 +121,24 @@ def main():
         else:
             xt, yt, ha = -5, 5, "right"
         ax.annotate(
-            f"{y:.1%}",
+            f"{y:.1%}\n{lift:.1f}×",
             xy=(k, y), xytext=(xt, yt), textcoords="offset points",
-            fontsize=8, color=MODEL_COLOR, ha=ha, va="bottom",
-            fontweight="bold",
+            fontsize=7, color=MODEL_COLOR, ha=ha, va="bottom",
+            fontweight="bold", linespacing=1.0,
         )
+
+    # MRR / median-rank stats are surfaced as a separate \fbox in the
+    # paper layout next to the caption, not overlaid on the chart, so the
+    # data area stays clean.
 
     ax.set_xlabel("k", fontsize=10, color="#222", fontweight="bold")
     ax.set_ylabel("Hit@k", fontsize=10, color="#222", fontweight="bold")
 
     y_top = max(hit_curve.max(), random_curve.max()) * 1.18
-    ax.set_xlim(0, 51)
+    # Extra horizontal padding so the leftmost annotation (k=1) and the
+    # rightmost (k=50) don't get clipped by the axes spines or run off
+    # the rendered area.
+    ax.set_xlim(-7, 53)
     ax.set_ylim(0, y_top)
     ax.set_xticks([1, 5, 10, 20, 30, 40, 50])
     ax.yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1.0, decimals=0))

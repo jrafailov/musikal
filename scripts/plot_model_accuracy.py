@@ -80,10 +80,10 @@ def _draw_panel(ax, labels, values, color, title):
            edgecolor="#333", linewidth=0.6)
 
     # value labels above each bar. Sized small so adjacent labels never
-    # touch; color-matched to the bar so the panel reads as one unit.
+    # touch; black text reads cleanly against the white panel background.
     for xi, h in zip(x, values):
         ax.text(xi, h + 0.018, f"{h:.2f}",
-                ha="center", va="bottom", fontsize=6.5, color=color,
+                ha="center", va="bottom", fontsize=6.5, color="#000",
                 fontweight="bold")
 
     # chance baseline
@@ -111,10 +111,9 @@ def plot_grouped_bars(order, rand_acc, hard_acc, out_path):
     regimes. Sorted by random-negative accuracy descending."""
     labels = [SHORT_NAMES[m] for m in order]
 
-    # Native figsize roughly matches the on-page render width
-    # (~0.41 linewidth = ~2.7 inch). Two panels need a wider native
-    # source than a single panel.
-    fig, axes = plt.subplots(1, 2, figsize=(4.6, 2.4), sharey=True)
+    # Landscape aspect so the chart stays short vertically when stacked
+    # with feature_importance_gbm.png in Figure 3.
+    fig, axes = plt.subplots(1, 2, figsize=(6.0, 2.0), sharey=True)
 
     _draw_panel(axes[0], labels, rand_acc.values,
                 RANDOM_COLOR, "Random negatives")

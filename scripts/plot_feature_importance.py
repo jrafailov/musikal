@@ -43,28 +43,29 @@ def _pick_sans_font():
 
 
 # theme_pubr-style defaults: clean white background, no grid, black spines
-# and ticks, sans-serif throughout. Font sizes pushed up so the figure stays
-# legible after LaTeX downscales it into the side-by-side caption layout.
+# and ticks, sans-serif throughout. Font sizes are sized for a compact source
+# figure (~7 inch wide) that LaTeX renders near 1:1 in the side-by-side
+# caption layout, so what you see here is roughly what reads in print.
 plt.rcParams.update({
     "font.family": _pick_sans_font(),
-    "font.size": 15,
-    "axes.titlesize": 18,
+    "font.size": 14,
+    "axes.titlesize": 17,
     "axes.titleweight": "bold",
-    "axes.labelsize": 15,
+    "axes.labelsize": 14,
     "axes.labelweight": "bold",
-    "axes.linewidth": 1.0,
+    "axes.linewidth": 0.9,
     "axes.edgecolor": "black",
     "axes.facecolor": "white",
     "figure.facecolor": "white",
     "xtick.direction": "out",
     "ytick.direction": "out",
-    "xtick.major.size": 4.0,
-    "ytick.major.size": 4.0,
-    "xtick.major.width": 1.0,
-    "ytick.major.width": 1.0,
+    "xtick.major.size": 3.5,
+    "ytick.major.size": 3.5,
+    "xtick.major.width": 0.9,
+    "ytick.major.width": 0.9,
     "xtick.color": "black",
     "ytick.color": "black",
-    "xtick.labelsize": 13,
+    "xtick.labelsize": 12,
     "ytick.labelsize": 13,
     "axes.grid": False,
     "legend.frameon": False,
@@ -146,16 +147,26 @@ def plot_panel(ax, agg, title, title_color, x_max):
     y = np.arange(len(top))
     ax.barh(y, pcts, color=colors, edgecolor="black", linewidth=0.8)
 
+    # Only annotate the two bars that carry the story — Tempo and Harmonic
+    # BPM dist. The rest are visible by bar length; numbers there just add
+    # clutter.
     label_offset = x_max * 0.012
+    annotated = {"Harmonic BPM dist.", "Tempo"}
     for i, pct in enumerate(pcts):
+        if pretty[i] not in annotated:
+            continue
         ax.text(pct + label_offset, i, f"{pct:.1f}%",
-                ha="left", va="center", fontsize=12)
+                ha="left", va="center", fontsize=13, fontweight="bold")
 
     ax.set_yticks(y)
     ax.set_yticklabels(pretty)
+    for tick_label, name in zip(ax.get_yticklabels(), pretty):
+        if name == "Harmonic BPM dist.":
+            tick_label.set_fontweight("bold")
+            tick_label.set_color(HARMONIC_COLOR)
     ax.set_xlabel("Importance (%)")
-    ax.set_xlim(0, x_max * 1.15)
-    ax.set_title(title, color=title_color, pad=10)
+    ax.set_xlim(0, x_max * 1.18)
+    ax.set_title(title, color=title_color, pad=6)
 
     # theme_pubr: keep only bottom + left spines, hide top + right
     ax.spines["top"].set_visible(False)
@@ -176,10 +187,9 @@ def main():
     x_max = max(random_agg.head(TOP_N).importance.max(),
                 hard_agg.head(TOP_N).importance.max()) * 100.0
 
-    # Wider, shorter aspect: avoids the wasted vertical space the previous
-    # 10.5 x 6.0 layout left between panel titles and bars. Suptitle is
-    # dropped because the caption already names the figure.
-    fig, axes = plt.subplots(1, 2, figsize=(11.0, 4.6))
+    # Compact layout: bars need ~10 rows of vertical space, anything taller
+    # was just whitespace. Suptitle dropped since the LaTeX caption names it.
+    fig, axes = plt.subplots(1, 2, figsize=(7.0, 3.0))
     plot_panel(axes[0], random_agg, "Random negatives",
                PANEL_TITLE_COLOR, x_max)
     plot_panel(axes[1], hard_agg, "Hard negatives (±5 BPM)",
