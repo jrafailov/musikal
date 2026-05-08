@@ -1,0 +1,8 @@
+librosa
+pandas
+numpy
+scikit-learn
+joblib
+matplotlib
+pyarrow
+yt-dlp
