@@ -1,6 +1,5 @@
-# All data is ignored. Previously committed files stay tracked;
-# use `git add -f` to intentionally track new ones.
-/data/*
+# All data is local-only. Never commit anything under data/.
+/data/
 
 
 # Python
